@@ -1,6 +1,7 @@
+const functions = require('@google-cloud/functions-framework');
 const { obterHorariosDisponiveis } = require('./calendarService');
 
-exports.dialogflowWebhook = async (req, res) => {
+functions.http('dialogflowWebhook', async (req, res) => {
   const intent = req.body.queryResult.intent.displayName;
   const params = req.body.queryResult.parameters;
   const cpf = params?.cpf;
@@ -43,4 +44,4 @@ exports.dialogflowWebhook = async (req, res) => {
         fulfillmentText: "Desculpe, não entendi a solicitação."
       });
   }
-};
+});
