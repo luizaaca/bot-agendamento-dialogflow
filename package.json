@@ -1,4 +1,10 @@
 {
+  "name": "bot-agendamento",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "functions-framework --target=dialogflowWebhook"
+  },
   "dependencies": {
     "@google-cloud/functions-framework": "^3.5.1",
     "googleapis": "^118.0.0",
