@@ -45,4 +45,4 @@ async function dialogflowWebhook(req, res) {
   }
 }
 
-module.exports = { dialogflowWebhook };
+functions.http('dialogflowWebhook', dialogflowWebhook);

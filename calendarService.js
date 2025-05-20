@@ -36,10 +36,10 @@ function slotLivre(slot, eventos) {
   );
 }
 
-async function obterHorariosDisponiveis(diasAdiante = 5) {
+async function obterHorariosDisponiveis() {
   const agora = DateTime.local();
   const limiteMinimo = agora.plus({ hours: 3 });
-  const fim = agora.plus({ days: diasAdiante });
+  const fim = agora.plus({ days: DIA_LIMITE });
 
   const authClient = await auth.getClient();
   const res = await calendar.events.list({
