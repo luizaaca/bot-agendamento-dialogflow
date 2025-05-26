@@ -1,5 +1,5 @@
 const { google } = require('googleapis');
-const { HORARIO_INICIO, HORARIO_FIM, SLOT_MINUTOS, INTERVALO_AGENDAMENTO, DIA_LIMITE, CALENDAR_ID } = require('./config');
+const { HORARIO_INICIO, HORARIO_FIM, SLOT_MINUTOS, INTERVALO_AGENDAMENTO, DIAS_LIMITE, CALENDAR_ID } = require('./config');
 const { DateTime } = require('luxon'); 
 
 DateTime.local().setLocale('pt-BR');
@@ -39,7 +39,7 @@ function slotLivre(slot, eventos) {
 async function obterHorariosDisponiveis() {
   const agora = DateTime.local();
   const limiteMinimo = agora.plus({ hours: 3 });
-  const fim = agora.plus({ days: DIA_LIMITE });
+  const fim = agora.plus({ days: DIAS_LIMITE });
 
   const authClient = await auth.getClient();
   const res = await calendar.events.list({
@@ -58,7 +58,7 @@ async function obterHorariosDisponiveis() {
 
   const horariosDisponiveis = [];
 
-  for (let i = 0; i <= diasAdiante; i++) {
+  for (let i = 0; i <= DIAS_LIMITE; i++) {
     const dia = agora.plus({ days: i }).startOf('day');
     const slots = gerarSlotsDia(dia, limiteMinimo);
     const livres = slots.filter(slot => slotLivre(slot, eventos));
