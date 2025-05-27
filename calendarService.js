@@ -1,8 +1,8 @@
 const { google } = require('googleapis');
 const { HORARIO_INICIO, HORARIO_FIM, SLOT_MINUTOS, INTERVALO_AGENDAMENTO, DIAS_LIMITE, CALENDAR_ID } = require('./config');
-const { DateTime } = require('luxon'); 
+const { DateTime, Settings } = require('luxon');
 
-DateTime.local().setLocale('pt-BR');
+Settings.defaultLocale = 'pt-BR'; // Define o locale padrão para todas as instâncias Luxon
 
 const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/calendar'],
@@ -39,7 +39,7 @@ class CalendarService {
       const livres = slots.filter(slot => CalendarService.slotLivre(slot, eventos));
 
       livres.forEach(slot => {
-        horariosDisponiveis.push(slot.inicio.setLocale('pt-BR').toFormat('cccc dd/MM HH:mm'));
+        horariosDisponiveis.push(slot.inicio.toFormat('cccc dd/MM HH:mm'));
       });
     }
 
@@ -73,7 +73,7 @@ class CalendarService {
       //description: evento.description,
       id: evento.id,
     }));
-
+    console.log(`Eventos encontrados: ${eventos.length}`);
     return eventos;
   }
 

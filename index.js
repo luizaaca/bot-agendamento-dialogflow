@@ -13,6 +13,7 @@ async function dialogflowWebhook(req, res) {
       agent.add(
          "Olá! Por favor informe seu nome completo e CPF para que eu possa verificar suas consultas."
       );
+      agent.setFollowupEvent("dados_necessarios"); // Dispara o evento para coletar dados iniciais
       // Não adicione contextos de saída aqui, o usuário responderá a outro Intent
    }
 
@@ -27,6 +28,7 @@ async function dialogflowWebhook(req, res) {
          agent.add(
             "Desculpe, não consegui entender seu nome completo ou CPF. Por favor, tente novamente."
          );
+         agentet.setFollowupEvent("dados_necessarios"); // Dispara o evento para coletar dados novamente
          // Não adicione contextos de saída para manter o usuário neste fluxo de coleta.
          return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
       }
@@ -80,7 +82,10 @@ async function dialogflowWebhook(req, res) {
          } else {
             // Nenhuma consulta encontrada
             agent.add(
-               `Não encontrei nenhuma consulta marcada para ${nomeCompleto} com o CPF ${cpf}.`
+              `Não encontrei nenhuma consulta marcada para ${nomeCompleto} com o CPF ${cpf}.`
+            );
+            console.log(
+               `Nenhuma consulta encontrada para ${nomeCompleto} com CPF ${cpf}`
             );
             agent.add("Você gostaria de marcar uma nova consulta?");
 
