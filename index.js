@@ -2,6 +2,7 @@ const functions = require("@google-cloud/functions-framework");
 const dialogflow = require("@google-cloud/dialogflow");
 const { WebhookClient, Suggestion } = require("dialogflow-fulfillment");
 const CalendarService = require("./calendarService");
+const { DateTime } = require('luxon');
 
 async function dialogflowWebhook(req, res) {
    const agent = new WebhookClient({ request: req, response: res });
@@ -48,9 +49,9 @@ async function dialogflowWebhook(req, res) {
             // Monta a mensagem com as consultas
             let mensagem = `Encontrei a(s) seguinte(s) consulta(s) para você:\n\n`;
             consultas.forEach((consulta) => {
-               mensagem += `- ${moment(consulta.data).format(
-                  "DD/MM/YYYY [às] HH:mm"
-               )} (${consulta.tipo})\n`;
+               mensagem += `- ${consulta.inicio.setLocale('pt-BR').toFormat(
+                  "dd/MM/yyyy [às] HH:mm"
+               )}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
             });
             mensagem +=
                "\nVocê deseja remarcar ou cancelar essa consulta?";
@@ -61,6 +62,7 @@ async function dialogflowWebhook(req, res) {
             agent.add(new Suggestion("Remarcar consulta"));
             agent.add(new Suggestion("Cancelar consulta"));
             agent.add(new Suggestion("Reiniciar agendamento"));
+            agent.add(new Suggestion("Sair"));
 
             // Ativa o contexto para os próximos Intents
             agent.setContext({
