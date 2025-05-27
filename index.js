@@ -5,13 +5,14 @@ async function dialogflowWebhook(req, res) {
   const intent = req.body.queryResult.intent.displayName;
   const params = req.body.queryResult.parameters;
   const cpf = params?.cpf;
+  const nome = params?.nome;
 
   switch (intent) {
-    case "VerificarAgenda":
+    case "ColetarDados":
       try {
         const horarios = await obterHorariosDisponiveis();
         return res.json({
-          fulfillmentText: `Horários disponíveis: ${horarios.join(', ')}`
+          fulfillmentText: `Olá ${nome}. Aqui estão os horários disponíveis: ${horarios.join(', ')}`
         });
       } catch (err) {
         console.error(err);
