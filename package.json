@@ -6,7 +6,9 @@
     "start": "functions-framework --target=dialogflowWebhook"
   },
   "dependencies": {
+    "@google-cloud/dialogflow": "^7.0.1",
     "@google-cloud/functions-framework": "^3.5.1",
+    "dialogflow-fulfillment": "^0.5.0",
     "googleapis": "^118.0.0",
     "luxon": "^3.6.1"
   }
