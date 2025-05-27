@@ -17,7 +17,7 @@ async function dialogflowWebhook(req, res) {
 
    // Função para o Coletar Dados Iniciais
    async function coletarDadosIniciais(agent) {
-      const nomeCompleto = agent.parameters.nome;
+      const nomeCompleto = agent.parameters.paciente?.name;
       let cpf = agent.parameters.cpf;
 
       console.log("Dados coletados:", { nomeCompleto, cpf });
