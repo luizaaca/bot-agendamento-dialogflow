@@ -69,8 +69,8 @@ class CalendarService {
     }).map(evento => ({
       inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date),
       fim: DateTime.fromISO(evento.end.dateTime || evento.end.date),
-      summary: evento.summary,
-      description: evento.description,
+      //summary: evento.summary,
+      //description: evento.description,
       id: evento.id,
     }));
 
