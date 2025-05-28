@@ -184,7 +184,7 @@ async function dialogflowWebhook(req, res) {
    let intentMap = new Map();
    intentMap.set("Default Welcome Intent", welcome);
    intentMap.set("ColetarDados", coletarDadosIniciais);
-   intentMap.set("NovaConsulta", novaConsulta); // Função para marcar nova consulta
+   intentMap.set("AgendarConsulta", novaConsulta); // Função para marcar nova consulta
    // Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
    // Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
    // intentMap.set('Consultas Encontradas', handleConsultasEncontradas);
