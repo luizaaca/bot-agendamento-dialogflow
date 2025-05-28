@@ -5,8 +5,10 @@ const CalendarService = require("./calendarService");
 const { DateTime } = require("luxon");
 
 async function dialogflowWebhook(req, res) {
-   if (req.body.originalDetectIntentRequest){
-      console.log(`Interceptando chamada do Console do Dialogflow com originalDetectIntentRequest.source: ${req.body.originalDetectIntentRequest.source}`);
+   if (req.body.originalDetectIntentRequest) {
+      console.log(
+         `Interceptando chamada do Console do Dialogflow com originalDetectIntentRequest.source: ${req.body.originalDetectIntentRequest.source}`
+      );
       req.body.originalDetectIntentRequest = {}; // Limpa o source para evitar problemas com o Dialogflow Console
    }
    const agent = new WebhookClient({ request: req, response: res });
@@ -74,7 +76,7 @@ async function dialogflowWebhook(req, res) {
             agent.setContext({
                name: "flow_consulta_encontrada_context",
                lifespan: 1, // Contexto ativo por 5 turnos de conversa
-               parameters: agent.parameters // Passa os dados e consultas para os próximos intents
+               parameters: agent.parameters, // Passa os dados e consultas para os próximos intents
             });
 
             // Dispara um evento para o Dialogflow saber que consultas foram encontradas (opcional, mas bom para Intents baseados em evento)
@@ -111,10 +113,79 @@ async function dialogflowWebhook(req, res) {
       }
    }
 
+   // Função para marcar uma nova consulta, apresentando os horários disponíveis
+   async function novaConsulta(agent) {
+      const nomeCompleto = agent.parameters.paciente?.name;
+      const cpf = agent.parameters.cpf;
+
+      console.log("Dados coletados:", { nomeCompleto, cpf });
+
+      if (!nomeCompleto || !cpf) {
+         agent.add(
+            "Desculpe, não consegui entender seu nome completo ou CPF. Por favor, tente novamente."
+         );
+         return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
+      }
+      // Remove caracteres não numéricos do CPF
+      const cpfLimpo = cpf.replace(/\D/g, "");
+      if (cpfLimpo.length !== 11) {
+         agent.add("Por favor, informe um CPF válido com 11 dígitos.");
+         return;
+      }
+      try {
+         // Verifica se já existe uma consulta agendada
+         const consultasExistentes =
+            await CalendarService.verificarAgendamentoExistente(
+               nomeCompleto,
+               cpfLimpo
+            );
+
+         if (consultasExistentes && consultasExistentes.length > 0) {
+            agent.add(
+               `Você já possui uma consulta agendada para ${nomeCompleto} com o CPF ${cpfLimpo}.`
+            );
+            return; // Interrompe a execução, pois não é necessário marcar nova consulta
+         }
+
+         const horariosDisponiveis =
+            await CalendarService.obterHorariosDisponiveis(); // obterHorariosDisponiveis é async
+
+         // Substituir a lista numerada por chips
+         agent.add(
+            `Olá ${nomeCompleto}, por favor, escolha um horário disponível abaixo:`
+         );
+
+         // Adiciona cada horário disponível como um chip
+         horariosDisponiveis.forEach((horario) => {
+            agent.add(new Suggestion(horario));
+         });
+
+         // Ativa o contexto para o próximo Intent de confirmação de agendamento
+         agent.setContext({
+            name: "flow_nova_consulta_horarios_context",
+            lifespan: 1,
+            parameters: {
+               nomeCompleto,
+               cpf: cpfLimpo,
+               horariosDisponiveis: horariosDisponiveis, // Passa o array de horários
+            },
+         });
+
+        //  // Dispara um evento
+        //  agent.setFollowupEvent("nova_consulta_agendada");
+      } catch (error) {
+         console.error("Erro ao iniciar marcação de nova consulta:", error);
+         agent.add(
+            "Desculpe, tive um problema ao tentar marcar uma nova consulta. Por favor, tente novamente mais tarde."
+         );
+      }
+   }
+
    // Mapeamento de Intents para funções
    let intentMap = new Map();
    intentMap.set("Default Welcome Intent", welcome);
    intentMap.set("ColetarDados", coletarDadosIniciais);
+   intentMap.set("NovaConsulta", novaConsulta); // Função para marcar nova consulta
    // Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
    // Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
    // intentMap.set('Consultas Encontradas', handleConsultasEncontradas);
