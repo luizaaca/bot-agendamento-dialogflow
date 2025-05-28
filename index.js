@@ -74,11 +74,7 @@ async function dialogflowWebhook(req, res) {
             agent.setContext({
                name: "flow_consulta_encontrada_context",
                lifespan: 1, // Contexto ativo por 5 turnos de conversa
-               parameters: {
-                  nomeCompleto: nomeCompleto,
-                  cpf: cpf,
-                  consultas: consultas,
-               }, // Passa os dados e consultas para os próximos intents
+               parameters: agent.parameters // Passa os dados e consultas para os próximos intents
             });
 
             // Dispara um evento para o Dialogflow saber que consultas foram encontradas (opcional, mas bom para Intents baseados em evento)
@@ -100,7 +96,7 @@ async function dialogflowWebhook(req, res) {
             agent.setContext({
                name: "flow_sem_consulta_context",
                lifespan: 1, // Contexto ativo por 5 turnos de conversa
-               parameters: { nomeCompleto: nomeCompleto, cpf: cpf }, // Passa os dados para o próximo intent
+               parameters: agent.parameters, // Passa os dados para o próximo intent
             });
 
             // Dispara um evento
