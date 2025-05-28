@@ -5,6 +5,10 @@ const CalendarService = require("./calendarService");
 const { DateTime } = require("luxon");
 
 async function dialogflowWebhook(req, res) {
+   if (req.body.originalDetectIntentRequest){
+      console.log(`Interceptando chamada do Console do Dialogflow com originalDetectIntentRequest.source: ${req.body.originalDetectIntentRequest.source}`);
+      req.body.originalDetectIntentRequest = {}; // Limpa o source para evitar problemas com o Dialogflow Console
+   }
    const agent = new WebhookClient({ request: req, response: res });
 
    // Função para o Default Welcome Intent
@@ -21,9 +25,6 @@ async function dialogflowWebhook(req, res) {
 
    // Função para o Coletar Dados Iniciais
    async function coletarDadosIniciais(agent) {
-      if (req.body.originalDetectIntentRequest?.source === "DIALOGFLOW_CONSOLE")
-         console.log("Interceptando chamada do Console do Dialogflow");
-
       const nomeCompleto = agent.parameters.paciente?.name;
       let cpf = agent.parameters.cpf;
 
