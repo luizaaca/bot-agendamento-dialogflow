@@ -96,7 +96,7 @@ async function dialogflowWebhook(req, res) {
             // Ativa o contexto para o próximo Intent
             agent.setContext({
                name: "flow_sem_consulta_context",
-               lifespan: 1, 
+               lifespan: 1,
                parameters: agent.parameters, // Passa os dados para o próximo intent
             });
 
@@ -114,11 +114,12 @@ async function dialogflowWebhook(req, res) {
 
    // Função para marcar uma nova consulta, apresentando os horários disponíveis
    async function novaConsulta(agent) {
-      const context = agent.context.get('flow_sem_consulta_context');
+      const context = agent.getContext("flow_sem_consulta_context");
+
       const nomeCompleto = context.parameters.paciente?.name;
       const cpf = context.parameters.cpf;
 
-      console.log("[NovaConsulta] Dados coletados:", agent.parameters);
+      console.log("[NovaConsulta] Dados coletados:", { nomeCompleto, cpf });
 
       if (!nomeCompleto || !cpf) {
          agent.add(
@@ -171,8 +172,8 @@ async function dialogflowWebhook(req, res) {
             },
          });
 
-        //  // Dispara um evento
-        //  agent.setFollowupEvent("nova_consulta_agendada");
+         //  // Dispara um evento
+         //  agent.setFollowupEvent("nova_consulta_agendada");
       } catch (error) {
          console.error("Erro ao iniciar marcação de nova consulta:", error);
          agent.add(
