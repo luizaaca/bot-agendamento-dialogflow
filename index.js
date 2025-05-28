@@ -15,7 +15,7 @@ async function dialogflowWebhook(req, res) {
 
    // Função para o Default Welcome Intent
    function welcome(agent) {
-      console.log("[Welcome] Dados coletados:", { nomeCompleto, cpf });
+      console.log("[Welcome] Dados coletados:", agent.parameters);
 
       // Envia a pergunta inicial para o usuário
       agent.add(
@@ -29,7 +29,7 @@ async function dialogflowWebhook(req, res) {
       const nomeCompleto = agent.parameters.paciente?.name;
       let cpf = agent.parameters.cpf;
 
-      console.log("[ColetarDadosIniciais] Dados coletados:", { nomeCompleto, cpf });
+      console.log("[ColetarDadosIniciais] Dados coletados:", agent.parameters);
 
       if (!nomeCompleto || !cpf) {
          agent.add(
@@ -117,7 +117,7 @@ async function dialogflowWebhook(req, res) {
       const nomeCompleto = agent.parameters.paciente?.name;
       const cpf = agent.parameters.cpf;
 
-      console.log("[NovaConsulta] Dados coletados:", { nomeCompleto, cpf });
+      console.log("[NovaConsulta] Dados coletados:", agent.parameters);
 
       if (!nomeCompleto || !cpf) {
          agent.add(
