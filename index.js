@@ -15,8 +15,7 @@ async function dialogflowWebhook(req, res) {
 
    // Função para o Default Welcome Intent
    function welcome(agent) {
-      if (req.body.originalDetectIntentRequest?.source === "DIALOGFLOW_CONSOLE")
-         console.log("Interceptando chamada do Console do Dialogflow");
+      console.log("[Welcome] Dados coletados:", { nomeCompleto, cpf });
 
       // Envia a pergunta inicial para o usuário
       agent.add(
@@ -30,7 +29,7 @@ async function dialogflowWebhook(req, res) {
       const nomeCompleto = agent.parameters.paciente?.name;
       let cpf = agent.parameters.cpf;
 
-      console.log("Dados coletados:", { nomeCompleto, cpf });
+      console.log("[ColetarDadosIniciais] Dados coletados:", { nomeCompleto, cpf });
 
       if (!nomeCompleto || !cpf) {
          agent.add(
@@ -97,12 +96,12 @@ async function dialogflowWebhook(req, res) {
             // Ativa o contexto para o próximo Intent
             agent.setContext({
                name: "flow_sem_consulta_context",
-               lifespan: 1, // Contexto ativo por 5 turnos de conversa
+               lifespan: 2, // Contexto ativo por 5 turnos de conversa
                parameters: agent.parameters, // Passa os dados para o próximo intent
             });
-
+            console.log(agent.parameters);
             // Dispara um evento
-            agent.setFollowupEvent("nenhuma_consulta_encontrada");
+            //agent.setFollowupEvent("nenhuma_consulta_encontrada");
          }
       } catch (error) {
          console.error("Erro ao verificar consultas:", error);
@@ -118,7 +117,7 @@ async function dialogflowWebhook(req, res) {
       const nomeCompleto = agent.parameters.paciente?.name;
       const cpf = agent.parameters.cpf;
 
-      console.log("Dados coletados:", { nomeCompleto, cpf });
+      console.log("[NovaConsulta] Dados coletados:", { nomeCompleto, cpf });
 
       if (!nomeCompleto || !cpf) {
          agent.add(
