@@ -2,23 +2,28 @@ const functions = require("@google-cloud/functions-framework");
 const dialogflow = require("@google-cloud/dialogflow");
 const { WebhookClient, Suggestion } = require("dialogflow-fulfillment");
 const CalendarService = require("./calendarService");
-const { DateTime } = require('luxon');
+const { DateTime } = require("luxon");
 
 async function dialogflowWebhook(req, res) {
    const agent = new WebhookClient({ request: req, response: res });
 
    // Função para o Default Welcome Intent
    function welcome(agent) {
+      if (req.body.originalDetectIntentRequest?.source === "DIALOGFLOW_CONSOLE")
+         console.log("Interceptando chamada do Console do Dialogflow");
+
       // Envia a pergunta inicial para o usuário
       agent.add(
          "Olá! Por favor informe seu nome completo e CPF para que eu possa verificar suas consultas."
       );
-      agent.setFollowupEvent("dados_necessarios"); // Dispara o evento para coletar dados iniciais
       // Não adicione contextos de saída aqui, o usuário responderá a outro Intent
    }
 
    // Função para o Coletar Dados Iniciais
    async function coletarDadosIniciais(agent) {
+      if (req.body.originalDetectIntentRequest?.source === "DIALOGFLOW_CONSOLE")
+         console.log("Interceptando chamada do Console do Dialogflow");
+
       const nomeCompleto = agent.parameters.paciente?.name;
       let cpf = agent.parameters.cpf;
 
@@ -51,12 +56,11 @@ async function dialogflowWebhook(req, res) {
             // Monta a mensagem com as consultas
             let mensagem = `Encontrei a(s) seguinte(s) consulta(s) para você:\n\n`;
             consultas.forEach((consulta) => {
-               mensagem += `- ${consulta.inicio.setLocale('pt-BR').toFormat(
-                  "dd/MM/yyyy [às] HH:mm"
-               )}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
+               mensagem += `- ${consulta.inicio
+                  .setLocale("pt-BR")
+                  .toFormat("dd/MM/yyyy [às] HH:mm")}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
             });
-            mensagem +=
-               "\nVocê deseja remarcar ou cancelar essa consulta?";
+            mensagem += "\nVocê deseja remarcar ou cancelar essa consulta?";
 
             agent.add(mensagem);
 
@@ -82,7 +86,7 @@ async function dialogflowWebhook(req, res) {
          } else {
             // Nenhuma consulta encontrada
             agent.add(
-              `Não encontrei nenhuma consulta marcada para ${nomeCompleto} com o CPF ${cpf}.`
+               `Não encontrei nenhuma consulta marcada para ${nomeCompleto} com o CPF ${cpf}.`
             );
             console.log(
                `Nenhuma consulta encontrada para ${nomeCompleto} com CPF ${cpf}`
@@ -113,6 +117,7 @@ async function dialogflowWebhook(req, res) {
 
    // Mapeamento de Intents para funções
    let intentMap = new Map();
+   intentMap.set("Default Welcome Intent", welcome);
    intentMap.set("WelcomeIntent", welcome);
    intentMap.set("ColetarDados", coletarDadosIniciais);
    // Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
