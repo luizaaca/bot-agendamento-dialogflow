@@ -114,8 +114,9 @@ async function dialogflowWebhook(req, res) {
 
    // Função para marcar uma nova consulta, apresentando os horários disponíveis
    async function novaConsulta(agent) {
-      const nomeCompleto = agent.parameters.paciente?.name;
-      const cpf = agent.parameters.cpf;
+      const context = agent.context.get('flow_sem_consulta_context');
+      const nomeCompleto = context.parameters.paciente?.name;
+      const cpf = context.parameters.cpf;
 
       console.log("[NovaConsulta] Dados coletados:", agent.parameters);
 
