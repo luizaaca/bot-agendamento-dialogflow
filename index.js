@@ -34,7 +34,6 @@ async function dialogflowWebhook(req, res) {
          agent.add(
             "Desculpe, não consegui entender seu nome completo ou CPF. Por favor, tente novamente."
          );
-         agentet.setFollowupEvent("dados_necessarios"); // Dispara o evento para coletar dados novamente
          // Não adicione contextos de saída para manter o usuário neste fluxo de coleta.
          return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
       }
@@ -74,7 +73,7 @@ async function dialogflowWebhook(req, res) {
             // Ativa o contexto para os próximos Intents
             agent.setContext({
                name: "flow_consulta_encontrada_context",
-               lifespan: 5, // Contexto ativo por 5 turnos de conversa
+               lifespan: 1, // Contexto ativo por 5 turnos de conversa
                parameters: {
                   nomeCompleto: nomeCompleto,
                   cpf: cpf,
@@ -100,7 +99,7 @@ async function dialogflowWebhook(req, res) {
             // Ativa o contexto para o próximo Intent
             agent.setContext({
                name: "flow_sem_consulta_context",
-               lifespan: 5, // Contexto ativo por 5 turnos de conversa
+               lifespan: 1, // Contexto ativo por 5 turnos de conversa
                parameters: { nomeCompleto: nomeCompleto, cpf: cpf }, // Passa os dados para o próximo intent
             });
 
@@ -119,7 +118,6 @@ async function dialogflowWebhook(req, res) {
    // Mapeamento de Intents para funções
    let intentMap = new Map();
    intentMap.set("Default Welcome Intent", welcome);
-   intentMap.set("WelcomeIntent", welcome);
    intentMap.set("ColetarDados", coletarDadosIniciais);
    // Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
    // Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
@@ -127,50 +125,6 @@ async function dialogflowWebhook(req, res) {
    // intentMap.set('Nenhuma Consulta Encontrada', handleNenhumaConsultaEncontrada);
 
    agent.handleRequest(intentMap);
-
-   // const intent = req.body.queryResult.intent.displayName;
-   // const params = req.body.queryResult.parameters;
-   // const cpf = params?.cpf;
-   // const nome = params?.nome;
-
-   // switch (intent) {
-   //   case "ColetarDados":
-   //     try {
-   //       const horarios = await obterHorariosDisponiveis();
-   //       return res.json({
-   //         fulfillmentText: `Olá ${nome}. Aqui estão os horários disponíveis: ${horarios.join(', ')}`
-   //       });
-   //     } catch (err) {
-   //       console.error(err);
-   //       return res.json({ fulfillmentText: "Ocorreu um erro ao acessar a agenda." });
-   //     }
-
-   //   case "AgendarConsulta":
-   //     // Grava agendamento
-   //     if (!cpf) {
-   //       return res.json({ fulfillmentText: "Por favor, informe seu CPF para continuar." });
-   //     }
-   //     return res.json({
-   //       fulfillmentText: `Consulta agendada para ${params.data} às ${params.hora}`
-   //     });
-
-   //   case "CancelarAgendamento":
-   //     // Cancela o agendamento do paciente
-   //     return res.json({
-   //       fulfillmentText: "Sua consulta foi cancelada com sucesso."
-   //     });
-
-   //   case "ConsultarAgendamento":
-   //     // Mostra agendamento atual
-   //     return res.json({
-   //       fulfillmentText: "Sua próxima consulta é na sexta às 14h."
-   //     });
-
-   //   default:
-   //     return res.json({
-   //       fulfillmentText: "Desculpe, não entendi a solicitação."
-   //     });
-   //}
 }
 
 functions.http("dialogflowWebhook", dialogflowWebhook);
