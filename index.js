@@ -96,10 +96,10 @@ async function dialogflowWebhook(req, res) {
             // Ativa o contexto para o próximo Intent
             agent.setContext({
                name: "flow_sem_consulta_context",
-               lifespan: 2, // Contexto ativo por 5 turnos de conversa
+               lifespan: 1, 
                parameters: agent.parameters, // Passa os dados para o próximo intent
             });
-            console.log(agent.parameters);
+
             // Dispara um evento
             //agent.setFollowupEvent("nenhuma_consulta_encontrada");
          }
