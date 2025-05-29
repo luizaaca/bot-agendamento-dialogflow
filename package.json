@@ -11,5 +11,9 @@
     "dialogflow-fulfillment": "^0.5.0",
     "googleapis": "^118.0.0",
     "luxon": "^3.6.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.27.0",
+    "globals": "^16.2.0"
   }
 }

@@ -136,3 +136,5 @@ dist
 .pnp.*
 service-account.json
 specs.txt
+eslint.config.js
+.vscode
