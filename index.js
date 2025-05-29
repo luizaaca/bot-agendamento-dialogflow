@@ -228,7 +228,7 @@ async function dialogflowWebhook(req, res) {
 
 		}else{
 			agent.add("Por favor, responda com 'sim' ou 'não' para confirmar o cancelamento da consulta.");
-			agent.addContext({
+			agent.setContext({
 				name: "flow_cancelar_consulta_context",
 				lifespan: 1,
 				parameters: context.parameters,
