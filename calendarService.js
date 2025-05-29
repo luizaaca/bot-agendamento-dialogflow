@@ -69,8 +69,8 @@ class CalendarService {
 		}).map(evento => ({
 			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
 			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
-			//summary: evento.summary,
-			//description: evento.description,
+			summary: evento.summary,
+			description: evento.description,
 			id: evento.id,
 		}));
 		console.info(`Eventos encontrados: ${eventos.length}`);
@@ -133,17 +133,39 @@ class CalendarService {
 		return true;
 	}
 
+	//método para get evento by id
+	static async getEventoById(eventoId) {
+		if (!eventoId) {
+			throw new Error("ID do evento não fornecido");
+		}
+
+		const authClient = await auth.getClient();
+		const res = await calendar.events.get({
+			auth: authClient,
+			calendarId: CALENDAR_ID,
+			eventId: eventoId,
+		});
+
+		return res.data.map(evento => ({
+			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
+			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
+			summary: evento.summary,
+			description: evento.description,
+			id: evento.id,
+		}));
+	}
+
 	//método para cancelar agendamento, necessita nome, cpf e id do evento
 	static async cancelarConsulta(nome, cpf, eventoId) {
 		if (!nome || !cpf || !eventoId) {
 			throw new Error("Dados incompletos para cancelamento");
 		}
+		const evento = await CalendarService.getEventoById(eventoId);
+		if (!evento ) { throw new Error("Nenhum agendamento encontrado para cancelamento"); }
 
-		const eventos = await CalendarService.verificarAgendamentoExistente(nome, cpf);
-		console.info(`Eventos encontrados para cancelamento: ${JSON.stringify(eventos)}`);
-		if (!eventos ||
-        eventos.length < 1 ||
-        !eventos.some(evento => evento.id === eventoId && evento.summary?.includes(cpf) && evento.summary?.includes(nome))) {
+		console.info(`Evento encontrado para cancelamento: `, evento);
+
+		if (!evento || !evento.summary.includes(nome) || !evento.description.includes(cpf)) {
 			throw new Error("Nenhum agendamento encontrado para cancelamento");
 		}
 
@@ -154,7 +176,7 @@ class CalendarService {
 			eventId: eventoId,
 		});
 
-		console.info(`Consulta cancelada: ${nome}, CPF: ${cpf}, Evento ID: ${eventoId}, Data: ${eventos[0].inicio}`);
+		console.info(`Consulta cancelada: ${nome}, CPF: ${cpf}, Evento ID: ${eventoId}, Data: ${evento.inicio}`);
 		return true;
 	}
 }
