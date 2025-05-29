@@ -12,7 +12,7 @@ const calendar = google.calendar({ version: "v3", auth });
 
 class CalendarService {
 	static async obterHorariosDisponiveis() {
-		const agora = DateTime.local();
+		const agora = DateTime.local().setZone("America/Sao_Paulo");
 		const limiteMinimo = agora.plus({ hours: INTERVALO_AGENDAMENTO });
 		const fim = agora.plus({ days: DIAS_LIMITE });
 
@@ -48,7 +48,7 @@ class CalendarService {
 
 	static async verificarAgendamentoExistente(nome, cpf) {
 		// Exemplo: busca eventos que tenham nome e cpf no summary ou description
-		const agora = DateTime.local();
+		const agora = DateTime.local().setZone("America/Sao_Paulo");
 		const fim = agora.plus({ days: 30 }); // busca eventos nos próximos 30 dias
 
 		const authClient = await auth.getClient();
@@ -67,8 +67,8 @@ class CalendarService {
 			const descricao = (evento.description || "") + (evento.summary || "");
 			return descricao.includes(nome) && descricao.includes(cpf);
 		}).map(evento => ({
-			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date),
-			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date),
+			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
+			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
 			//summary: evento.summary,
 			//description: evento.description,
 			id: evento.id,
@@ -105,10 +105,8 @@ class CalendarService {
 	}
 
 	static async agendarConsulta(nomeCompleto, cpf, horarioSelecionado) {
-		// O formato recebido do Dialogflow para date-time é ISO 8601
-		// Exemplo: "2025-05-29T14:00:00-03:00"
-		// Portanto, usamos DateTime.fromISO para fazer o parse corretamente.
-		const inicio = DateTime.fromISO(horarioSelecionado);
+
+		const inicio = DateTime.fromISO(horarioSelecionado, { zone: "America/Sao_Paulo" });
 		const fim = inicio.plus({ minutes: SLOT_MINUTOS });
 
 		const evento = {
@@ -142,10 +140,10 @@ class CalendarService {
 		}
 
 		const eventos = await CalendarService.verificarAgendamentoExistente(nome, cpf);
-
+		console.info(`Eventos encontrados para cancelamento: ${JSON.stringify(eventos)}`);
 		if (!eventos ||
         eventos.length < 1 ||
-        !eventos.some(evento => evento.id === eventoId && evento.summary.includes(cpf) && evento.summary.includes(nome))) {
+        !eventos.some(evento => evento.id === eventoId && evento.summary?.includes(cpf) && evento.summary?.includes(nome))) {
 			throw new Error("Nenhum agendamento encontrado para cancelamento");
 		}
 

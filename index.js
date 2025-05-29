@@ -50,10 +50,7 @@ async function dialogflowWebhook(req, res) {
 			if (consultas && consultas.length > 0) {
 				// Monta a mensagem com as consultas
 				let mensagem = `Encontrei a(s) seguinte(s) consulta(s) para você:\n\n`;
-				consultas.forEach((consulta) => {
-					mensagem += `- ${consulta.inicio
-						.toFormat("cccc dd/MM/yyyy HH:mm")}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
-				});
+				consultas.forEach((consulta) => {mensagem += `- ${consulta.inicio.toFormat("cccc dd/MM/yyyy HH:mm")}\n`;});
 				mensagem += "\nVocê deseja remarcar ou cancelar essa consulta?";
 
 				agent.add(mensagem);
@@ -226,11 +223,16 @@ async function dialogflowWebhook(req, res) {
 				agent.add("Sua consulta foi cancelada com sucesso.");
 			} catch (error) {
 				console.error("Erro ao cancelar consulta:", error);
-				agent.add("Desculpe, tive um problema ao tentar cancelar sua consulta. Por favor, tente novamente mais tarde.");
+				agent.add(`Desculpe, tive um problema ao tentar cancelar sua consulta: ${error.message}`);
 			}
 
 		}else{
 			agent.add("Por favor, responda com 'sim' ou 'não' para confirmar o cancelamento da consulta.");
+			agent.addContext({
+				name: "flow_cancelar_consulta_context",
+				lifespan: 1,
+				parameters: context.parameters,
+			});
 			return;
 		}
 	}
