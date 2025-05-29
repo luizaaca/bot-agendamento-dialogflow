@@ -207,19 +207,26 @@ async function dialogflowWebhook(req, res) {
 		const cpf = context?.parameters?.cpf;
 		const idConsulta = context?.parameters?.idConsulta;
 
-		console.info("[CancelarConsulta] Dados coletados:", { nomeCompleto, cpf, idConsulta });
+		console.info("[CancelarConsulta] Dados coletados:", { ...agent.parameters, nomeCompleto, cpf, idConsulta });
 
-		if (!nomeCompleto || !cpf || !idConsulta) {
-			agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
+		if(agent.parameters.resposta === "Não"){
+			agent.add("Ok, sua consulta não será cancelada.");
 			return;
 		}
+		else if(agent.parameters.resposta === "Sim"){
 
-		try {
-			await CalendarService.cancelarConsulta(idConsulta);
-			agent.add("Sua consulta foi cancelada com sucesso.");
-		} catch (error) {
-			console.error("Erro ao cancelar consulta:", error);
-			agent.add("Desculpe, tive um problema ao tentar cancelar sua consulta. Por favor, tente novamente mais tarde.");
+			if (!nomeCompleto || !cpf || !idConsulta) {
+				agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
+				return;
+			}
+
+			try {
+				await CalendarService.cancelarConsulta(idConsulta);
+				agent.add("Sua consulta foi cancelada com sucesso.");
+			} catch (error) {
+				console.error("Erro ao cancelar consulta:", error);
+				agent.add("Desculpe, tive um problema ao tentar cancelar sua consulta. Por favor, tente novamente mais tarde.");
+			}
 		}
 	}
 

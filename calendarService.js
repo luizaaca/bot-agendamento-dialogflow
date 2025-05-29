@@ -136,7 +136,7 @@ class CalendarService {
 	}
 
 	//método para cancelar agendamento, necessita nome, cpf e id do evento
-	static async cancelarAgendamento(nome, cpf, eventoId) {
+	static async cancelarConsulta(nome, cpf, eventoId) {
 		if (!nome || !cpf || !eventoId) {
 			throw new Error("Dados incompletos para cancelamento");
 		}
