@@ -209,11 +209,11 @@ async function dialogflowWebhook(req, res) {
 
 		console.info("[CancelarConsulta] Dados coletados:", { ...agent.parameters, nomeCompleto, cpf, idConsulta });
 
-		if(agent.parameters.resposta === "Não"){
+		if(agent.parameters.resposta.toLowerCase() === "nao" || agent.parameters.resposta.toLowerCase() === "não") {
 			agent.add("Ok, sua consulta não será cancelada.");
 			return;
 		}
-		else if(agent.parameters.resposta === "Sim"){
+		else if(agent.parameters.resposta.toLowerCase() === "sim"){
 
 			if (!nomeCompleto || !cpf || !idConsulta) {
 				agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
