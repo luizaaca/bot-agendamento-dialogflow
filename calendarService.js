@@ -134,6 +134,31 @@ class CalendarService {
 		console.info(`Consulta agendada para ${inicio.toFormat("dd/MM/yyyy HH:mm")}`);
 		return true;
 	}
+
+	//método para cancelar agendamento, necessita nome, cpf e id do evento
+	static async cancelarAgendamento(nome, cpf, eventoId) {
+		if (!nome || !cpf || !eventoId) {
+			throw new Error("Dados incompletos para cancelamento");
+		}
+
+		const eventos = await CalendarService.verificarAgendamentoExistente(nome, cpf);
+
+		if (!eventos ||
+        eventos.length < 1 ||
+        !eventos.some(evento => evento.id === eventoId && evento.summary.includes(cpf) && evento.summary.includes(nome))) {
+			throw new Error("Nenhum agendamento encontrado para cancelamento");
+		}
+
+		const authClient = await auth.getClient();
+		await calendar.events.delete({
+			auth: authClient,
+			calendarId: CALENDAR_ID,
+			eventId: eventoId,
+		});
+
+		console.info(`Consulta cancelada: ${nome}, CPF: ${cpf}, Evento ID: ${eventoId}, Data: ${eventos[0].inicio}`);
+		return true;
+	}
 }
 
 module.exports = CalendarService;

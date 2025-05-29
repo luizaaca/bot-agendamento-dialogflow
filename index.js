@@ -52,8 +52,7 @@ async function dialogflowWebhook(req, res) {
 				let mensagem = `Encontrei a(s) seguinte(s) consulta(s) para você:\n\n`;
 				consultas.forEach((consulta) => {
 					mensagem += `- ${consulta.inicio
-						.setLocale("pt-BR")
-						.toFormat("dd/MM/yyyy [às] HH:mm")}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
+						.toFormat("cccc dd/MM/yyyy HH:mm")}\n`; // Removido (consulta.tipo) pois não está no objeto retornado
 				});
 				mensagem += "\nVocê deseja remarcar ou cancelar essa consulta?";
 
@@ -69,7 +68,7 @@ async function dialogflowWebhook(req, res) {
 				agent.setContext({
 					name: "flow_consulta_encontrada_context",
 					lifespan: 1, // Contexto ativo por 5 turnos de conversa
-					parameters: agent.parameters, // Passa os dados e consultas para os próximos intents
+					parameters: {...agent.parameters, idConsulta: consultas[0].id} // Passa os dados e consultas para os próximos intents
 				});
 
 				// Dispara um evento para o Dialogflow saber que consultas foram encontradas (opcional, mas bom para Intents baseados em evento)
@@ -134,7 +133,7 @@ async function dialogflowWebhook(req, res) {
 				return; // Interrompe a execução, pois não é necessário marcar nova consulta
 			}
 
-			const horariosDisponiveis = await CalendarService.obterHorariosDisponiveis(); // obterHorariosDisponiveis é async
+			const horariosDisponiveis = await CalendarService.obterHorariosDisponiveis();
 
 			// Substituir a lista numerada por chips
 			agent.add(`Olá ${nomeCompleto}, por favor, escolha um horário disponível abaixo:`);
@@ -150,7 +149,6 @@ async function dialogflowWebhook(req, res) {
 				lifespan: 1,
 				parameters: {
 					...context.parameters,
-					horariosDisponiveis: horariosDisponiveis,
 				},
 			});
 
@@ -169,7 +167,7 @@ async function dialogflowWebhook(req, res) {
 		const context = agent.getContext("flow_nova_consulta_horarios_context");
 		const nomeCompleto= context.parameters.paciente?.name;
 		const cpf = context.parameters.cpf;
-		const horarioSelecionado = agent.parameters["date-time"]["date_time"];
+		const horarioSelecionado = agent.parameters.dataHora["date_time"];
 
 		console.info("[ConfirmarConsulta] Dados coletados:", { nomeCompleto, cpf, horarioSelecionado });
 
@@ -195,10 +193,33 @@ async function dialogflowWebhook(req, res) {
 			}
 			// Chama a função de agendamento na CalendarService
 			await CalendarService.agendarConsulta(nomeCompleto, cpfLimpo, horarioSelecionado);
-			agent.add("Consulta agendada com sucesso!");
+			agent.add(`Consulta agendada com sucesso para ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}!`);
 		} catch (error) {
 			console.error("Erro ao agendar consulta:", error);
 			agent.add("Desculpe, tive um problema ao tentar agendar sua consulta. Por favor, tente novamente mais tarde.");
+		}
+	}
+
+	// Função para cancelar uma consulta
+	async function cancelarConsulta(agent) {
+		const context = agent.getContext("flow_consulta_encontrada_context");
+		const nomeCompleto = context?.parameters?.paciente?.name;
+		const cpf = context?.parameters?.cpf;
+		const idConsulta = context?.parameters?.idConsulta;
+
+		console.info("[CancelarConsulta] Dados coletados:", { nomeCompleto, cpf, idConsulta });
+
+		if (!nomeCompleto || !cpf || !idConsulta) {
+			agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
+			return;
+		}
+
+		try {
+			await CalendarService.cancelarConsulta(idConsulta);
+			agent.add("Sua consulta foi cancelada com sucesso.");
+		} catch (error) {
+			console.error("Erro ao cancelar consulta:", error);
+			agent.add("Desculpe, tive um problema ao tentar cancelar sua consulta. Por favor, tente novamente mais tarde.");
 		}
 	}
 
@@ -208,6 +229,8 @@ async function dialogflowWebhook(req, res) {
 	intentMap.set("ColetarDados", coletarDadosIniciais);
 	intentMap.set("AgendarConsulta", novaConsulta); // Função para marcar nova consulta
 	intentMap.set("InformarHorario", confirmarConsulta); // Função para confirmar agendamento
+	//intentMap.set("RemarcarConsulta", coletarDadosIniciais); // Reutiliza a coleta de dados para remarcar
+	intentMap.set("CancelarConsulta", cancelarConsulta); // Reutiliza a coleta de dados para cancelar
 	// Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
 	// Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
 	// intentMap.set('Consultas Encontradas', handleConsultasEncontradas);
