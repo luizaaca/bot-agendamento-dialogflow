@@ -145,14 +145,14 @@ class CalendarService {
 			calendarId: CALENDAR_ID,
 			eventId: eventoId,
 		});
-
-		return res.data.map(evento => ({
+		const evento = res.data;
+		return {
 			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
 			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
 			summary: evento.summary,
 			description: evento.description,
 			id: evento.id,
-		}));
+		};
 	}
 
 	//método para cancelar agendamento, necessita nome, cpf e id do evento
