@@ -230,9 +230,11 @@ async function dialogflowWebhook(req, res) {
 			agent.add("Por favor, responda com 'sim' ou 'não' para confirmar o cancelamento da consulta.");
 			agent.setContext({
 				name: "flow_confirmar_acao_context",
-				acao: "cancelar",
 				lifespan: 1,
-				parameters: context.parameters,
+				parameters: {
+					...context.parameters,
+					acao: "cancelar"
+				}
 			});
 			agent.setContext(context);
 			return;
@@ -249,7 +251,7 @@ async function dialogflowWebhook(req, res) {
 		console.info("[ConfirmarAcao] Dados coletados:", { acao, resposta, cpf });
 
 		if (acao === "cancelar") {
-			cancelarConsulta(agent);
+			await cancelarConsulta(agent);
 		} else {
 			agent.add("Ação não reconhecida. Por favor, tente novamente.");
 			return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
