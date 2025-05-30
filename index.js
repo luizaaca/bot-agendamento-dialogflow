@@ -206,12 +206,12 @@ async function dialogflowWebhook(req, res) {
 
 		console.info("[CancelarConsulta] Dados coletados:", { ...agent.parameters, nomeCompleto, cpf, idConsulta });
 
-		if(agent.parameters.resposta.toLowerCase() === "nao" || agent.parameters.resposta.toLowerCase() === "não") {
+		if(agent.parameters?.resposta?.toLowerCase() === "nao" || agent.parameters?.resposta?.toLowerCase() === "não") {
 			agent.add("Ok, sua consulta não será cancelada.");
-			agent.add("Se precisar de mais alguma coisa, é só avisar!");
+			agent.add("Se precisar de mais alguma coisa, é só chamar!");
 			return;
 		}
-		else if(agent.parameters.resposta.toLowerCase() === "sim"){
+		else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
 
 			if (!nomeCompleto || !cpf || !idConsulta) {
 				agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
@@ -220,7 +220,7 @@ async function dialogflowWebhook(req, res) {
 
 			try {
 				await CalendarService.cancelarConsulta(nomeCompleto, cpf, idConsulta);
-				agent.add("Sua consulta foi cancelada com sucesso.");
+				agent.add("Sua consulta foi cancelada com sucesso. Se precisar de mais alguma coisa, é só chamar!");
 			} catch (error) {
 				console.error("Erro ao cancelar consulta:", error);
 				agent.add(`Desculpe, tive um problema ao tentar cancelar sua consulta: ${error.message}`);
@@ -229,11 +229,30 @@ async function dialogflowWebhook(req, res) {
 		}else{
 			agent.add("Por favor, responda com 'sim' ou 'não' para confirmar o cancelamento da consulta.");
 			agent.setContext({
-				name: "flow_cancelar_consulta_context",
+				name: "flow_confirmar_acao_context",
+				acao: "cancelar",
 				lifespan: 1,
 				parameters: context.parameters,
 			});
+			agent.setContext(context);
 			return;
+		}
+	}
+
+	async function confirmarAcao(agent) {
+		const contextResposta = agent.getContext("flow_confirmar_acao_context");
+		const acao = contextResposta?.parameters?.acao;
+		const resposta = agent.parameters.resposta.toLowerCase();
+		const cpf = contextResposta?.parameters?.cpf.replace(/\D/g, "");
+		agent.parameters.resposta = resposta;
+
+		console.info("[ConfirmarAcao] Dados coletados:", { acao, resposta, cpf });
+
+		if (acao === "cancelar") {
+			cancelarConsulta(agent);
+		} else {
+			agent.add("Ação não reconhecida. Por favor, tente novamente.");
+			return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
 		}
 	}
 
@@ -245,6 +264,7 @@ async function dialogflowWebhook(req, res) {
 	intentMap.set("InformarHorario", confirmarConsulta); // Função para confirmar agendamento
 	//intentMap.set("RemarcarConsulta", coletarDadosIniciais); // Reutiliza a coleta de dados para remarcar
 	intentMap.set("CancelarConsulta", cancelarConsulta); // Reutiliza a coleta de dados para cancelar
+	intentMap.set("ConfirmarAcao", confirmarAcao); // Reutiliza a coleta de dados para cancelar
 	// Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
 	// Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
 	// intentMap.set('Consultas Encontradas', handleConsultasEncontradas);
