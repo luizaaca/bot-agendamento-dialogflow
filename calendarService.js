@@ -106,7 +106,7 @@ class CalendarService {
 
 	static async agendarConsulta(nomeCompleto, cpf, horarioSelecionado) {
 
-		const inicio = DateTime.fromISO(horarioSelecionado, { zone: "America/Sao_Paulo" });
+		const inicio = horarioSelecionado;
 		const fim = inicio.plus({ minutes: SLOT_MINUTOS });
 
 		const evento = {

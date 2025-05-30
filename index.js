@@ -2,7 +2,7 @@ const functions = require("@google-cloud/functions-framework");
 //const dialogflow = require("@google-cloud/dialogflow");
 const { WebhookClient, Suggestion } = require("dialogflow-fulfillment");
 const CalendarService = require("./calendarService");
-//const { DateTime } = require("luxon");
+const { DateTime } = require("luxon");
 
 async function dialogflowWebhook(req, res) {
 	if (req.body.originalDetectIntentRequest) {
@@ -164,7 +164,7 @@ async function dialogflowWebhook(req, res) {
 		const context = agent.getContext("flow_nova_consulta_horarios_context");
 		const nomeCompleto= context.parameters.paciente?.name;
 		const cpf = context.parameters.cpf;
-		const horarioSelecionado = agent.parameters.dataHora["date_time"];
+		const horarioSelecionado = DateTime.fromISO(agent.parameters.dataHora["date_time"], { zone: "America/Sao_Paulo" });
 
 		console.info("[ConfirmarConsulta] Dados coletados:", { nomeCompleto, cpf, horarioSelecionado });
 
