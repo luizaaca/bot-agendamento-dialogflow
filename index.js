@@ -64,7 +64,7 @@ async function dialogflowWebhook(req, res) {
 				// Ativa o contexto para os próximos Intents
 				agent.setContext({
 					name: "flow_consulta_encontrada_context",
-					lifespan: 1, // Contexto ativo por 5 turnos de conversa
+					lifespan: 1,
 					parameters: {...agent.parameters, idConsulta: consultas[0].id} // Passa os dados e consultas para os próximos intents
 				});
 
@@ -163,7 +163,7 @@ async function dialogflowWebhook(req, res) {
 	async function confirmarConsulta(agent) {
 		const context = agent.getContext("flow_nova_consulta_horarios_context");
 		const nomeCompleto= context.parameters.paciente?.name;
-		const cpf = context.parameters.cpf;
+		const cpf = context.parameters.cpf.replace(/\D/g, "");
 		const horarioSelecionado = DateTime.fromISO(agent.parameters.dataHora["date_time"], { zone: "America/Sao_Paulo" });
 
 		console.info("[ConfirmarConsulta] Dados coletados:", { nomeCompleto, cpf, horarioSelecionado });
@@ -174,22 +174,21 @@ async function dialogflowWebhook(req, res) {
 			return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
 		}
 		// Remove caracteres não numéricos do CPF
-		const cpfLimpo = cpf.replace(/\D/g, "");
-		if (cpfLimpo.length !== 11) {
+		if (cpf.length !== 11) {
 			agent.add("Por favor, informe um CPF válido com 11 dígitos.");
 			return;
 		}
 
 		try {
 			// Verifica se já existe uma consulta agendada
-			const consultasExistentes = await CalendarService.verificarAgendamentoExistente(nomeCompleto, cpfLimpo);
+			const consultasExistentes = await CalendarService.verificarAgendamentoExistente(nomeCompleto, cpf);
 			if (consultasExistentes && consultasExistentes.length > 0) {
 				console.info("[ConfirmarConsulta] Já existem consultas agendadas:", consultasExistentes);
-				agent.add(`Já existe uma consulta agendada para ${nomeCompleto} com o CPF ${cpfLimpo} em ${consultasExistentes[0].inicio.toFormat("cccc dd/MM/yyyy HH:mm")}.`);
+				agent.add(`Já existe uma consulta agendada para ${nomeCompleto} com o CPF ${cpf} em ${consultasExistentes[0].inicio.toFormat("cccc dd/MM/yyyy HH:mm")}.`);
 				return; // Interrompe a execução, pois não é necessário agendar nova consulta
 			}
 			// Chama a função de agendamento na CalendarService
-			await CalendarService.agendarConsulta(nomeCompleto, cpfLimpo, horarioSelecionado);
+			await CalendarService.agendarConsulta(nomeCompleto, cpf, horarioSelecionado);
 			agent.add(`Consulta agendada com sucesso para ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}!`);
 		} catch (error) {
 			console.error("Erro ao agendar consulta:", error);
@@ -211,8 +210,7 @@ async function dialogflowWebhook(req, res) {
 			agent.add("Se precisar de mais alguma coisa, é só chamar!");
 			return;
 		}
-		else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
-
+		else if(agent.parameters?.resposta?.toLowerCase() === "sim") {
 			if (!nomeCompleto || !cpf || !idConsulta) {
 				agent.add("Desculpe, não consegui identificar a consulta a ser cancelada. Por favor, tente novamente.");
 				return;
@@ -227,16 +225,95 @@ async function dialogflowWebhook(req, res) {
 			}
 
 		}else{
-			agent.add("Por favor, responda com 'sim' ou 'não' para confirmar o cancelamento da consulta.");
-			agent.setContext({
-				name: "flow_confirmar_acao_context",
-				lifespan: 1,
-				parameters: {
-					...context.parameters,
-					acao: "cancelar"
-				}
+			await solicitarConfirmacao(agent, context, "cancelar");
+			return;
+		}
+	}
+
+	// Função para solicitar remarcação de consulta
+	async function solicitarRemarcacao(agent) {
+		const context = agent.getContext("flow_consulta_encontrada_context");
+		const nomeCompleto = context?.parameters?.paciente?.name;
+		const cpf = context?.parameters?.cpf.replace(/\D/g, "");
+		const idConsulta = context?.parameters?.idConsulta;
+
+		console.info("[SolicitarRemarcacao] Dados coletados:", { ...agent.parameters, nomeCompleto, cpf, idConsulta });
+
+		if (!nomeCompleto || !cpf || !idConsulta) {
+			agent.add("Desculpe, não consegui identificar a consulta a ser remarcada. Por favor, tente novamente.");
+			return;
+		}
+
+		try {
+			const consultaAgendada = await CalendarService.getEventoById(idConsulta);
+			if (!consultaAgendada || !consultaAgendada.summary.includes(nomeCompleto) || !consultaAgendada.summary.includes(cpf)) {
+				agent.add("Desculpe, ocorreu algum erro e não consegui encontrar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
+				return;
+			}
+
+			const horariosDisponiveis = await CalendarService.obterHorariosDisponiveis();
+
+			// Substituir a lista numerada por chips
+			agent.add(`Olá ${nomeCompleto}, por favor, escolha um horário disponível abaixo:`);
+
+			// Adiciona cada horário disponível como um chip
+			horariosDisponiveis.forEach((horario) => {
+				agent.add(new Suggestion(horario));
 			});
-			agent.setContext(context);
+			agent.setContext({
+				name: "flow_remarcar_consulta_context",
+				lifespan: 1,
+				parameters: { ...context.parameters, idConsulta }
+			});
+		} catch (error) {
+			console.error("Erro ao verificar o calendario:", error);
+			agent.add("Desculpe, tive um problema ao verificar o calendário. Por favor, inicie o processo novamente.");
+		}
+	}
+
+	// Função para remarcar uma consulta
+	async function remarcarConsulta(agent) {
+		const context = agent.getContext("flow_remarcar_consulta_context");
+		const nomeCompleto = context?.parameters?.paciente?.name;
+		const cpf = context?.parameters?.cpf.replace(/\D/g, "");
+		const idConsulta = context?.parameters?.idConsulta;
+		const horarioSelecionado = agent.parameters?.dataHora ? DateTime.fromISO(agent.parameters?.dataHora["date_time"], { zone: "America/Sao_Paulo" }) : null;
+
+		if(!nomeCompleto || !cpf || !idConsulta || !horarioSelecionado) {
+			agent.add("Desculpe, não consegui identificar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
+			console.warn("[RemarcarConsulta] Dados incompletos para remarcação:", { nomeCompleto, cpf, idConsulta, horarioSelecionado });
+			return;
+		}
+
+		console.info("[RemarcarConsulta] Dados coletados:", { ...agent.parameters, nomeCompleto, cpf, idConsulta, horarioSelecionado });
+
+		if(agent.parameters?.resposta?.toLowerCase() === "nao" || agent.parameters?.resposta?.toLowerCase() === "não") {
+			agent.add("Ok, sua consulta não será remarcada.");
+			agent.add("Se precisar de mais alguma coisa, é só chamar!");
+			return;
+		}
+		else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
+			try {
+				const consultaAgendada = await CalendarService.getEventoById(idConsulta);
+				if (!consultaAgendada) {
+					agent.add("Desculpe, ocorreu algum erro e não consegui encontrar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
+					return;
+				}
+				if(consultaAgendada.inicio.toISO() === horarioSelecionado.toISO()) {
+					agent.add("O horário selecionado é o mesmo da consulta atual. Por favor, escolha um horário diferente.");
+					return;
+				}
+				if(await CalendarService.agendarConsulta(nomeCompleto, cpf, horarioSelecionado)) {
+					await CalendarService.cancelarConsulta(nomeCompleto, cpf, idConsulta, consultaAgendada);
+					agent.add(`Sua consulta foi remarcada com sucesso de ${consultaAgendada.inicio.toFormat("dd/MM/yyyy HH:mm")} para ${horarioSelecionado.toFormat("dd/MM/yyyy HH:mm")}`);
+				}
+			} catch (error) {
+				console.error("Erro ao remarcar consulta:", error);
+				agent.add(`Desculpe, tive um problema ao tentar remarcar sua consulta: ${error.message}. Inicie o processo novamente.`);
+				return;
+			}
+		}else{
+			await solicitarConfirmacao(agent, context, "remarcar");
 			return;
 		}
 	}
@@ -252,25 +329,36 @@ async function dialogflowWebhook(req, res) {
 
 		if (acao === "cancelar") {
 			await cancelarConsulta(agent);
+		} else if (acao === "remarcar") {
+			await remarcarConsulta(agent);
 		} else {
-			agent.add("Ação não reconhecida. Por favor, tente novamente.");
-			return; // Interrompe a execução para que o Dialogflow espere uma nova entrada.
+			agent.add("Desculpe, ocorreu um erro e não entendi a ação que você deseja confirmar. Inicie o processo novamente.");
+			return;
 		}
 	}
 
-	// Mapeamento de Intents para funções
+	async function solicitarConfirmacao(agent, context, acao) {
+		agent.add(`Por favor, responda com 'sim' ou 'não' para confirmar a ação de ${acao}.`);
+		agent.setContext({
+			name: "flow_confirmar_acao_context",
+			lifespan: 1,
+			parameters: {
+				...context.parameters,
+				acao: acao
+			}
+		});
+		agent.setContext(context);
+	}
+
 	const intentMap = new Map();
 	intentMap.set("Default Welcome Intent", welcome);
 	intentMap.set("ColetarDados", coletarDadosIniciais);
-	intentMap.set("AgendarConsulta", novaConsulta); // Função para marcar nova consulta
-	intentMap.set("InformarHorario", confirmarConsulta); // Função para confirmar agendamento
-	//intentMap.set("RemarcarConsulta", coletarDadosIniciais); // Reutiliza a coleta de dados para remarcar
-	intentMap.set("CancelarConsulta", cancelarConsulta); // Reutiliza a coleta de dados para cancelar
-	intentMap.set("ConfirmarAcao", confirmarAcao); // Reutiliza a coleta de dados para cancelar
-	// Adicione mais mapeamentos para os intents de "Consultas Encontradas" e "Nenhuma Consulta Encontrada" se precisar de lógica extra neles
-	// Por exemplo, se Consultas Encontradas precisar formatar a mensagem de forma diferente ou lidar com o que o usuário diz em seguida:
-	// intentMap.set('Consultas Encontradas', handleConsultasEncontradas);
-	// intentMap.set('Nenhuma Consulta Encontrada', handleNenhumaConsultaEncontrada);
+	intentMap.set("AgendarConsulta", novaConsulta);
+	intentMap.set("InformarHorario", confirmarConsulta);
+	intentMap.set("RemarcarConsulta", remarcarConsulta);
+	intentMap.set("CancelarConsulta", cancelarConsulta);
+	intentMap.set("ConfirmarAcao", confirmarAcao);
+	intentMap.set("SolicitarRemarcacao", solicitarRemarcacao);
 
 	agent.handleRequest(intentMap);
 }

@@ -123,14 +123,14 @@ class CalendarService {
 		};
 
 		const authClient = await auth.getClient();
-		await calendar.events.insert({
+		const res = await calendar.events.insert({
 			auth: authClient,
 			calendarId: CALENDAR_ID,
 			requestBody: evento,
 		});
 
-		console.info(`Consulta agendada para ${inicio.toFormat("dd/MM/yyyy HH:mm")}`);
-		return true;
+		console.info(`Consulta agendada:`, res.data);
+		return res.data.id; // Retorna o ID do evento agendado
 	}
 
 	//método para get evento by id
@@ -143,9 +143,20 @@ class CalendarService {
 		const res = await calendar.events.get({
 			auth: authClient,
 			calendarId: CALENDAR_ID,
-			eventId: eventoId,
+			eventId: eventoId
 		});
 		const evento = res.data;
+
+		if (!evento) {
+			console.warn(`Nenhum evento encontrado com o ID: ${eventoId}`);
+			return null;
+		}
+		// Exclui eventos que foram removidos (status: "cancelled")
+		else if (evento?.status === "cancelled") {
+			console.info(`Evento ${eventoId} está cancelado/deletado e será ignorado.`);
+			return null;
+		}
+
 		return {
 			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
 			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
@@ -156,20 +167,24 @@ class CalendarService {
 	}
 
 	//método para cancelar agendamento, necessita nome, cpf e id do evento
-	static async cancelarConsulta(nome, cpf, eventoId) {
+	static async cancelarConsulta(nome, cpf, eventoId, eventoObj) {
 		if (!nome || !cpf || !eventoId) {
 			throw new Error("Dados incompletos para cancelamento");
 		}
-		const evento = await CalendarService.getEventoById(eventoId);
-		if (!evento ) { throw new Error("Nenhum agendamento encontrado para cancelamento"); }
+
+		const evento = eventoObj || await CalendarService.getEventoById(eventoId);
+		if (!evento ) {
+			throw new Error("Nenhum agendamento encontrado para cancelamento, talvez já tenha sido cancelado.");
+		}
 
 		console.info(`Evento encontrado para cancelamento: `, evento);
 
-		if (!evento || !evento.summary.includes(nome) || !evento.description.includes(cpf)) {
-			throw new Error("Nenhum agendamento encontrado para cancelamento");
+		if (!evento.summary.includes(nome) || !evento.description.includes(cpf)) {
+			throw new Error("O evento não corresponde ao nome e CPF fornecidos.");
 		}
 
 		const authClient = await auth.getClient();
+		//
 		await calendar.events.delete({
 			auth: authClient,
 			calendarId: CALENDAR_ID,
