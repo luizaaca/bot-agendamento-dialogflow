@@ -325,7 +325,7 @@ class CalendarService {
 		const fim = inicio.plus({ minutes: config.SLOT_MINUTOS });
 
 		const eventosConflitantes = await this.getEventosByDateTime(inicio, fim);
-		if (eventosConflitantes.some(evento => evento.inicio.equals(inicio))) {
+		if (eventosConflitantes.length > 0) {
 			throw new Error("Horário selecionado já está ocupado. Por favor, escolha outro horário.");
 		}
 

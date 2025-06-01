@@ -406,6 +406,17 @@ async function dialogflowWebhook(req, res) {
 				agent.add("O horário selecionado é o mesmo da consulta atual. Por favor, escolha um horário diferente.");
 				return;
 			}
+			//valida se o nome completo e o cpf estão corretos
+			if (!consultaAgendada.summary.includes(nomeCompleto) || !consultaAgendada.summary.includes(cpf)) {
+				console.warn({
+					origem: "[RemarcarConsulta]",
+					mensagem: "Consulta não pertence ao CPF informado",
+					detalhes: { idConsulta, nomeCompleto, cpf, consultaAgendada },
+					traceId: traceId
+				});
+				agent.add("Desculpe, houve algum erro, a consulta selecionada não pertence ao cpf informado. Por favor, inicie o processo novamente.");
+				return;
+			}
 
 			if(agent.parameters?.resposta?.toLowerCase() === "nao" || agent.parameters?.resposta?.toLowerCase() === "não") {
 				agent.add("Ok, sua consulta não será remarcada.");
@@ -413,11 +424,12 @@ async function dialogflowWebhook(req, res) {
 				return;
 			}
 			else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
-
-				await calendarService.remarcarConsulta(nomeCompleto, cpf, idConsulta, horarioSelecionado);
-
+				await calendarService.remarcarConsulta(idConsulta, horarioSelecionado);
+				agent.add(`Consulta remarcada com sucesso de ${consultaAgendada.inicio.toFormat("cccc dd/MM/yyyy HH:mm")} para ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}!`);
+				agent.add("Se precisar de mais alguma coisa, é só chamar!");
+				return;
 			}else{
-				agent.add(`A consulta está agendada para: ${consultaAgendada.inicio.toFormat("cccc dd/MM/yyyy HH:mm")}. Novo horário: ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}.`);
+				agent.add(`Consulta atual: ${consultaAgendada.inicio.toFormat("cccc dd/MM/yyyy HH:mm")}. Novo horário: ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}.`);
 				if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime; // Garante que o dateTime esteja no contexto após a confirmação
 				await solicitarConfirmacao(agent, context, "remarcar");
 				return;
