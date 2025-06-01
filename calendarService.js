@@ -11,7 +11,15 @@ const auth = new google.auth.GoogleAuth({
 const calendar = google.calendar({ version: "v3", auth });
 
 class CalendarService {
-	static async obterHorariosDisponiveis() {
+	constructor(traceId) {
+		this.traceId = traceId;
+	}
+
+	/**
+     * Retorna uma lista de horários disponíveis para agendamento, considerando os eventos já existentes no calendário.
+     * @returns {Promise<Array<string>>} Lista de horários disponíveis formatados.
+     */
+	async obterHorariosDisponiveis() {
 		const agora = DateTime.local().setZone("America/Sao_Paulo");
 		const limiteMinimo = agora.plus({ hours: INTERVALO_AGENDAMENTO });
 		const fim = agora.plus({ days: DIAS_LIMITE });
@@ -35,21 +43,25 @@ class CalendarService {
 
 		for (let i = 0; i <= DIAS_LIMITE; i++) {
 			const dia = agora.plus({ days: i }).startOf("day");
-			const slots = CalendarService.gerarSlotsDia(dia, limiteMinimo);
-			const livres = slots.filter(slot => CalendarService.slotLivre(slot, eventos));
+			const slots = this.#gerarSlotsDia(dia, limiteMinimo);
+			const livres = slots.filter(slot => this.#slotLivre(slot, eventos));
 
 			livres.forEach(slot => {
 				horariosDisponiveis.push(slot.inicio.toFormat("cccc dd/MM HH:mm"));
 			});
 		}
-
 		return horariosDisponiveis;
 	}
 
-	static async verificarAgendamentoExistente(nome, cpf) {
-		// Exemplo: busca eventos que tenham nome e cpf no summary ou description
+	/**
+     * Busca eventos existentes no calendário que contenham o nome e CPF informados.
+     * @param {string} nome - Nome do paciente.
+     * @param {string} cpf - CPF do paciente.
+     * @returns {Promise<Array<Object>>} Lista de eventos encontrados.
+     */
+	async verificarAgendamentoExistente(nome, cpf) {
 		const agora = DateTime.local().setZone("America/Sao_Paulo");
-		const fim = agora.plus({ days: 30 }); // busca eventos nos próximos 30 dias
+		const fim = agora.plus({ days: 30 });
 
 		const authClient = await auth.getClient();
 		const res = await calendar.events.list({
@@ -59,10 +71,9 @@ class CalendarService {
 			timeMax: fim.toISO(),
 			singleEvents: true,
 			orderBy: "startTime",
-			q: nome // busca por nome no summary/description
+			q: nome
 		});
 
-		// Filtro adicional por CPF se necessário
 		const eventos = res.data.items.filter(evento => {
 			const descricao = (evento.description || "") + (evento.summary || "");
 			return descricao.includes(nome) && descricao.includes(cpf);
@@ -73,17 +84,25 @@ class CalendarService {
 			description: evento.description,
 			id: evento.id,
 		}));
-		console.info(`Eventos encontrados: ${eventos.length}`);
+		console.info({
+			origem: "[CalendarService.verificarAgendamentoExistente]",
+			mensagem: "Eventos encontrados para nome e CPF",
+			detalhes: { quantidade: eventos.length },
+			traceId: this.traceId
+		});
 		return eventos;
 	}
 
-	static gerarSlotsDia(dia, horaLimiteInicial) {
+	/**
+     * Gera os slots de horários disponíveis para um determinado dia, considerando o horário de início e fim.
+     * @private
+     */
+	#gerarSlotsDia(dia, horaLimiteInicial) {
 		const slots = [];
 		let slot = dia.set({ hour: HORARIO_INICIO, minute: 0 });
 
-		// se hoje, respeitar horaLimiteInicial (ex: agora + 3h)
 		if (slot < horaLimiteInicial) {
-			slot = horaLimiteInicial.plus({ minutes: -horaLimiteInicial.minute % SLOT_MINUTOS }); // arredondar para múltiplo
+			slot = horaLimiteInicial.plus({ minutes: -horaLimiteInicial.minute % SLOT_MINUTOS });
 		}
 
 		const ultimoSlot = dia.set({ hour: HORARIO_FIM, minute: 0 });
@@ -97,14 +116,25 @@ class CalendarService {
 		return slots;
 	}
 
-	static slotLivre(slot, eventos) {
-		// Refatorado para lógica correta de não sobreposição
+	/**
+     * Verifica se um slot está livre, ou seja, não há eventos sobrepostos.
+     * @private
+     */
+	#slotLivre(slot, eventos) {
 		return eventos.every(evento =>
 			slot.fim <= evento.inicio || slot.inicio >= evento.fim
 		);
 	}
 
-	static async agendarConsulta(nomeCompleto, cpf, horarioSelecionado) {
+	/**
+     * Agenda uma nova consulta no calendário, verificando conflitos de horário.
+     * @param {string} nomeCompleto - Nome do paciente.
+     * @param {string} cpf - CPF do paciente.
+     * @param {DateTime} horarioSelecionado - Data/hora de início da consulta (Luxon).
+     * @returns {Promise<string>} ID do evento agendado.
+     * @throws {Error} Se houver conflito de horário.
+     */
+	async agendarConsulta(nomeCompleto, cpf, horarioSelecionado) {
 
 		const inicio = horarioSelecionado;
 		const fim = inicio.plus({ minutes: SLOT_MINUTOS });
@@ -122,6 +152,10 @@ class CalendarService {
 			},
 		};
 
+		const eventosExistentes = await this.getEventosByDateTime(inicio, fim);
+		if(eventosExistentes.some(eventoExistente => inicio === eventoExistente.inicio))
+			throw new Error("Horário selecionado já está ocupado. Por favor, escolha outro horário.");
+
 		const authClient = await auth.getClient();
 		const res = await calendar.events.insert({
 			auth: authClient,
@@ -129,12 +163,23 @@ class CalendarService {
 			requestBody: evento,
 		});
 
-		console.info(`Consulta agendada:`, res.data);
+		console.info({
+			origem: "[CalendarService.agendarConsulta]",
+			mensagem: "Consulta agendada",
+			detalhes: res.data,
+			traceId: this.traceId
+		});
+
 		return res.data.id; // Retorna o ID do evento agendado
 	}
 
-	//método para get evento by id
-	static async getEventoById(eventoId) {
+	/**
+     * Busca um evento do calendário pelo seu ID.
+     * @param {string} eventoId - ID do evento no Google Calendar.
+     * @returns {Promise<Object|null>} Objeto do evento ou null se não encontrado/cancelado.
+     * @throws {Error} Se o ID não for fornecido.
+     */
+	async getEventoById(eventoId) {
 		if (!eventoId) {
 			throw new Error("ID do evento não fornecido");
 		}
@@ -148,12 +193,22 @@ class CalendarService {
 		const evento = res.data;
 
 		if (!evento) {
-			console.warn(`Nenhum evento encontrado com o ID: ${eventoId}`);
+			console.warn({
+				origem: "[CalendarService.getEventoById]",
+				mensagem: `Nenhum evento encontrado com o ID.`,
+				detalhes: { eventoId },
+				traceId: this.traceId
+			});
 			return null;
 		}
 		// Exclui eventos que foram removidos (status: "cancelled")
 		else if (evento?.status === "cancelled") {
-			console.info(`Evento ${eventoId} está cancelado/deletado e será ignorado.`);
+			console.info({
+				origem: "[CalendarService.getEventoById]",
+				mensagem: `Evento está cancelado/deletado e será ignorado.`,
+				detalhes: { eventoId },
+				traceId: this.traceId
+			});
 			return null;
 		}
 
@@ -166,33 +221,93 @@ class CalendarService {
 		};
 	}
 
-	//método para cancelar agendamento, necessita nome, cpf e id do evento
-	static async cancelarConsulta(nome, cpf, eventoId, eventoObj) {
+	/**
+     * Cancela uma consulta agendada no calendário.
+     * @param {string} nome - Nome do paciente.
+     * @param {string} cpf - CPF do paciente.
+     * @param {string} eventoId - ID do evento a ser cancelado.
+     * @param {Object} [eventoObj] - Objeto do evento (opcional, para evitar nova busca).
+     * @returns {Promise<boolean>} True se o cancelamento foi realizado.
+     * @throws {Error} Se dados estiverem incompletos ou o evento não for encontrado.
+     */
+	async cancelarConsulta(nome, cpf, eventoId, eventoObj) {
 		if (!nome || !cpf || !eventoId) {
 			throw new Error("Dados incompletos para cancelamento");
 		}
 
-		const evento = eventoObj || await CalendarService.getEventoById(eventoId);
+		const evento = eventoObj || await this.getEventoById(eventoId);
 		if (!evento ) {
 			throw new Error("Nenhum agendamento encontrado para cancelamento, talvez já tenha sido cancelado.");
 		}
 
-		console.info(`Evento encontrado para cancelamento: `, evento);
+		console.info({
+			origem: "[CalendarService.cancelarConsulta]",
+			mensagem: "Evento encontrado para cancelamento",
+			detalhes: evento,
+			traceId: this.traceId
+		});
 
 		if (!evento.summary.includes(nome) || !evento.description.includes(cpf)) {
 			throw new Error("O evento não corresponde ao nome e CPF fornecidos.");
 		}
 
 		const authClient = await auth.getClient();
-		//
 		await calendar.events.delete({
 			auth: authClient,
 			calendarId: CALENDAR_ID,
 			eventId: eventoId,
 		});
 
-		console.info(`Consulta cancelada: ${nome}, CPF: ${cpf}, Evento ID: ${eventoId}, Data: ${evento.inicio}`);
+		console.info({
+			origem: "[CalendarService.cancelarConsulta]",
+			mensagem: "Consulta cancelada",
+			detalhes: {
+				nome,
+				cpf,
+				eventoId,
+				data: evento.inicio
+			},
+			traceId: this.traceId
+		});
+
 		return true;
+	}
+
+	/**
+     * Retorna todos os eventos do calendário que iniciam ou terminam entre os horários informados.
+     * Exclui eventos cancelados.
+     * @param {DateTime} inicio - Data/hora de início do intervalo (Luxon)
+     * @param {DateTime} fim - Data/hora de fim do intervalo (Luxon)
+     * @returns {Promise<Array>} Lista de eventos encontrados
+     */
+	async getEventosByDateTime(inicio, fim) {
+		const authClient = await auth.getClient();
+		const res = await calendar.events.list({
+			auth: authClient,
+			calendarId: CALENDAR_ID,
+			timeMin: inicio.toISO(),
+			timeMax: fim.toISO(),
+			singleEvents: true,
+			orderBy: "startTime",
+		});
+		const eventos = (res.data.items || [])
+			.filter(evento => evento.status !== "cancelled")
+			.map(evento => ({
+				inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
+				fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
+				summary: evento.summary,
+				description: evento.description,
+				id: evento.id,
+			}));
+
+		console.info({
+			origem: "[CalendarService.getEventosByDateTime]",
+			mensagem: "Eventos retornados para o intervalo solicitado",
+			detalhes: { quantidade: eventos.length, inicio: inicio.toISO(), fim: fim.toISO() },
+			traceId: this.traceId
+		});
+
+		return eventos;
 	}
 }
 
