@@ -1,6 +1,6 @@
-const { google } = require("googleapis");
-const { HORARIO_INICIO, HORARIO_FIM, SLOT_MINUTOS, INTERVALO_AGENDAMENTO, DIAS_LIMITE, CALENDAR_ID } = require("./config");
-const { DateTime, Settings } = require("luxon");
+import { google } from "googleapis";
+import { DateTime, Settings } from "luxon";
+import { config } from "./config.js";
 
 Settings.defaultLocale = "pt-BR"; // Define o locale padrão para todas as instâncias Luxon
 
@@ -21,13 +21,13 @@ class CalendarService {
      */
 	async obterHorariosDisponiveis() {
 		const agora = DateTime.local().setZone("America/Sao_Paulo");
-		const limiteMinimo = agora.plus({ hours: INTERVALO_AGENDAMENTO });
-		const fim = agora.plus({ days: DIAS_LIMITE });
+		const limiteMinimo = agora.plus({ hours: config.INTERVALO_AGENDAMENTO });
+		const fim = agora.plus({ days: config.DIAS_LIMITE });
 
 		const authClient = await auth.getClient();
 		const res = await calendar.events.list({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			timeMin: agora.toISO(),
 			timeMax: fim.toISO(),
 			singleEvents: true,
@@ -41,7 +41,7 @@ class CalendarService {
 
 		const horariosDisponiveis = [];
 
-		for (let i = 0; i <= DIAS_LIMITE; i++) {
+		for (let i = 0; i <= config.DIAS_LIMITE; i++) {
 			const dia = agora.plus({ days: i }).startOf("day");
 			const slots = this.#gerarSlotsDia(dia, limiteMinimo);
 			const livres = slots.filter(slot => this.#slotLivre(slot, eventos));
@@ -66,7 +66,7 @@ class CalendarService {
 		const authClient = await auth.getClient();
 		const res = await calendar.events.list({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			timeMin: agora.toISO(),
 			timeMax: fim.toISO(),
 			singleEvents: true,
@@ -99,16 +99,16 @@ class CalendarService {
      */
 	#gerarSlotsDia(dia, horaLimiteInicial) {
 		const slots = [];
-		let slot = dia.set({ hour: HORARIO_INICIO, minute: 0 });
+		let slot = dia.set({ hour: config.HORARIO_INICIO, minute: 0 });
 
 		if (slot < horaLimiteInicial) {
-			slot = horaLimiteInicial.plus({ minutes: -horaLimiteInicial.minute % SLOT_MINUTOS });
+			slot = horaLimiteInicial.plus({ minutes: -horaLimiteInicial.minute % config.SLOT_MINUTOS });
 		}
 
-		const ultimoSlot = dia.set({ hour: HORARIO_FIM, minute: 0 });
+		const ultimoSlot = dia.set({ hour: config.HORARIO_FIM, minute: 0 });
 
 		while (slot <= ultimoSlot) {
-			const proximo = slot.plus({ minutes: SLOT_MINUTOS });
+			const proximo = slot.plus({ minutes: config.SLOT_MINUTOS });
 			slots.push({ inicio: slot, fim: proximo });
 			slot = proximo;
 		}
@@ -137,7 +137,7 @@ class CalendarService {
 	async agendarConsulta(nomeCompleto, cpf, horarioSelecionado) {
 
 		const inicio = horarioSelecionado;
-		const fim = inicio.plus({ minutes: SLOT_MINUTOS });
+		const fim = inicio.plus({ minutes: config.SLOT_MINUTOS });
 
 		const evento = {
 			summary: `Consulta com ${nomeCompleto} - CPF: ${cpf}`,
@@ -159,7 +159,7 @@ class CalendarService {
 		const authClient = await auth.getClient();
 		const res = await calendar.events.insert({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			requestBody: evento,
 		});
 
@@ -187,7 +187,7 @@ class CalendarService {
 		const authClient = await auth.getClient();
 		const res = await calendar.events.get({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			eventId: eventoId
 		});
 		const evento = res.data;
@@ -254,7 +254,7 @@ class CalendarService {
 		const authClient = await auth.getClient();
 		await calendar.events.delete({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			eventId: eventoId,
 		});
 
@@ -284,7 +284,7 @@ class CalendarService {
 		const authClient = await auth.getClient();
 		const res = await calendar.events.list({
 			auth: authClient,
-			calendarId: CALENDAR_ID,
+			calendarId: config.CALENDAR_ID,
 			timeMin: inicio.toISO(),
 			timeMax: fim.toISO(),
 			singleEvents: true,
@@ -311,4 +311,4 @@ class CalendarService {
 	}
 }
 
-module.exports = CalendarService;
+export default CalendarService;

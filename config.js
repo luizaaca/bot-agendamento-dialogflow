@@ -1,4 +1,4 @@
-module.exports = {
+export const config = {
 	HORARIO_INICIO: 7, // 9h
 	HORARIO_FIM: 21, // 19h
 	SLOT_MINUTOS: 60, // duração de cada consulta

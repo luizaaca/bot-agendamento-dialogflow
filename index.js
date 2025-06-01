@@ -1,8 +1,7 @@
-const functions = require("@google-cloud/functions-framework");
-//const dialogflow = require("@google-cloud/dialogflow");
-const { WebhookClient, Suggestion } = require("dialogflow-fulfillment");
-const CalendarService = require("./calendarService");
-const { DateTime } = require("luxon");
+import functions from "@google-cloud/functions-framework";
+import { WebhookClient, Suggestion } from "dialogflow-fulfillment";
+import CalendarService from "./calendarService.js";
+import { DateTime } from "luxon";
 
 // Função utilitária para validar CPF (apenas verifica se tem 11 dígitos numéricos)
 function cpfValido(agent, nomeCompleto, cpf, origem) {
