@@ -361,7 +361,8 @@ async function dialogflowWebhook(req, res) {
 		const nomeCompleto = context?.parameters?.paciente?.name;
 		const cpf = context?.parameters?.cpf.replace(/\D/g, "");
 		const idConsulta = context?.parameters?.idConsulta;
-		const horarioSelecionado = agent.parameters?.dateTime ? DateTime.fromISO(agent.parameters?.dateTime["date_time"], { zone: "America/Sao_Paulo" }) : null;
+		const horarioSelecionado = agent.parameters?.dateTime ? DateTime.fromISO(agent.parameters?.dateTime["date_time"], { zone: "America/Sao_Paulo" }) :
+			DateTime.fromISO(context.parameters?.dateTime["date_time"], { zone: "America/Sao_Paulo" });
 
 		if(!nomeCompleto || !cpf || !idConsulta || !horarioSelecionado) {
 			agent.add("Desculpe, não consegui identificar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
@@ -412,6 +413,7 @@ async function dialogflowWebhook(req, res) {
 				return;
 			}
 		}else{
+			if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime;
 			await solicitarConfirmacao(agent, context, "remarcar");
 			return;
 		}
