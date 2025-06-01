@@ -391,10 +391,22 @@ async function dialogflowWebhook(req, res) {
 			try {
 				const consultaAgendada = await calendarService.getEventoById(idConsulta);
 				if (!consultaAgendada) {
+					console.warn({
+						origem: "[RemarcarConsulta]",
+						mensagem: "Consulta não encontrada",
+						detalhes: { idConsulta },
+						traceId: traceId
+					});
 					agent.add("Desculpe, ocorreu algum erro e não consegui encontrar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
 					return;
 				}
 				if(consultaAgendada.inicio.toISO() === horarioSelecionado.toISO()) {
+					console.warn({
+						origem: "[RemarcarConsulta]",
+						mensagem: "Horário selecionado é o mesmo da consulta atual",
+						detalhes: { idConsulta, horarioSelecionado },
+						traceId: traceId
+					});
 					agent.add("O horário selecionado é o mesmo da consulta atual. Por favor, escolha um horário diferente.");
 					return;
 				}
@@ -413,7 +425,7 @@ async function dialogflowWebhook(req, res) {
 				return;
 			}
 		}else{
-			if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime;
+			if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime; // Garante que o dateTime esteja no contexto após a confirmação
 			await solicitarConfirmacao(agent, context, "remarcar");
 			return;
 		}

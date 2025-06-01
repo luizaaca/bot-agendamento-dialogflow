@@ -309,6 +309,54 @@ class CalendarService {
 
 		return eventos;
 	}
+
+	//função para remarcar um evento existente alterando o horário ao inves de cancelar e criar um novo
+	async remarcarConsulta(eventoId, novoHorario) {
+		if (!eventoId || !novoHorario) {
+			throw new Error("ID do evento e novo horário são obrigatórios para remarcar a consulta.");
+		}
+
+		const eventoExistente = await this.getEventoById(eventoId);
+		if (!eventoExistente) {
+			throw new Error("Evento não encontrado ou já cancelado.");
+		}
+
+		const inicio = novoHorario;
+		const fim = inicio.plus({ minutes: config.SLOT_MINUTOS });
+
+		const eventosConflitantes = await this.getEventosByDateTime(inicio, fim);
+		if (eventosConflitantes.some(evento => evento.inicio.equals(inicio))) {
+			throw new Error("Horário selecionado já está ocupado. Por favor, escolha outro horário.");
+		}
+
+		const authClient = await auth.getClient();
+		const res = await calendar.events.update({
+			auth: authClient,
+			calendarId: config.CALENDAR_ID,
+			eventId: eventoId,
+			requestBody: {
+				summary: eventoExistente.summary,
+				description: eventoExistente.description,
+				start: {
+					dateTime: inicio.toISO(),
+					timeZone: "America/Sao_Paulo",
+				},
+				end: {
+					dateTime: fim.toISO(),
+					timeZone: "America/Sao_Paulo",
+				},
+			},
+		});
+
+		console.info({
+			origem: "[CalendarService.remarcarConsulta]",
+			mensagem: "Consulta remarcada com sucesso",
+			detalhes: res.data,
+			traceId: this.traceId
+		});
+
+		return res.data.id; // Retorna o ID do evento atualizado
+	}
 }
 
 export default CalendarService;
