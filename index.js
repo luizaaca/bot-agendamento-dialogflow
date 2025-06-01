@@ -382,51 +382,54 @@ async function dialogflowWebhook(req, res) {
 			traceId: traceId
 		});
 
-		if(agent.parameters?.resposta?.toLowerCase() === "nao" || agent.parameters?.resposta?.toLowerCase() === "não") {
-			agent.add("Ok, sua consulta não será remarcada.");
-			agent.add("Se precisar de mais alguma coisa, é só chamar!");
-			return;
-		}
-		else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
-			try {
-				const consultaAgendada = await calendarService.getEventoById(idConsulta);
-				if (!consultaAgendada) {
-					console.warn({
-						origem: "[RemarcarConsulta]",
-						mensagem: "Consulta não encontrada",
-						detalhes: { idConsulta },
-						traceId: traceId
-					});
-					agent.add("Desculpe, ocorreu algum erro e não consegui encontrar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
-					return;
-				}
-				if(consultaAgendada.inicio.toISO() === horarioSelecionado.toISO()) {
-					console.warn({
-						origem: "[RemarcarConsulta]",
-						mensagem: "Horário selecionado é o mesmo da consulta atual",
-						detalhes: { idConsulta, horarioSelecionado },
-						traceId: traceId
-					});
-					agent.add("O horário selecionado é o mesmo da consulta atual. Por favor, escolha um horário diferente.");
-					return;
-				}
-				if(await calendarService.agendarConsulta(nomeCompleto, cpf, horarioSelecionado)) {
-					await calendarService.cancelarConsulta(nomeCompleto, cpf, idConsulta, consultaAgendada);
-					agent.add(`Sua consulta foi remarcada com sucesso de ${consultaAgendada.inicio.toFormat("dd/MM/yyyy HH:mm")} para ${horarioSelecionado.toFormat("dd/MM/yyyy HH:mm")}`);
-				}
-			} catch (error) {
-				console.error({
+		if (!cpfValido(agent, nomeCompleto, cpf, "[RemarcarConsulta]")) return;
+
+		try{
+			const consultaAgendada = await calendarService.getEventoById(idConsulta);
+			if (!consultaAgendada) {
+				console.warn({
 					origem: "[RemarcarConsulta]",
-					mensagem: "Erro ao remarcar consulta",
-					erro: error,
+					mensagem: "Consulta não encontrada",
+					detalhes: { idConsulta },
 					traceId: traceId
 				});
-				agent.add(`Desculpe, tive um problema ao tentar remarcar sua consulta: ${error.message}. Inicie o processo novamente.`);
+				agent.add("Desculpe, ocorreu algum erro e não consegui encontrar a consulta a ser remarcada. Por favor, inicie o processo novamente.");
 				return;
 			}
-		}else{
-			if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime; // Garante que o dateTime esteja no contexto após a confirmação
-			await solicitarConfirmacao(agent, context, "remarcar");
+			if(consultaAgendada.inicio.toISO() === horarioSelecionado.toISO()) {
+				console.warn({
+					origem: "[RemarcarConsulta]",
+					mensagem: "Horário selecionado é o mesmo da consulta atual",
+					detalhes: { idConsulta, horarioSelecionado },
+					traceId: traceId
+				});
+				agent.add("O horário selecionado é o mesmo da consulta atual. Por favor, escolha um horário diferente.");
+				return;
+			}
+
+			if(agent.parameters?.resposta?.toLowerCase() === "nao" || agent.parameters?.resposta?.toLowerCase() === "não") {
+				agent.add("Ok, sua consulta não será remarcada.");
+				agent.add("Se precisar de mais alguma coisa, é só chamar!");
+				return;
+			}
+			else if(agent.parameters?.resposta?.toLowerCase() === "sim"){
+
+				await calendarService.remarcarConsulta(nomeCompleto, cpf, idConsulta, horarioSelecionado);
+
+			}else{
+				agent.add(`A consulta está agendada para: ${consultaAgendada.inicio.toFormat("cccc dd/MM/yyyy HH:mm")}. Novo horário: ${horarioSelecionado.toFormat("cccc dd/MM/yyyy HH:mm")}.`);
+				if(!context.parameters?.dateTime) context.parameters.dateTime = agent.parameters.dateTime; // Garante que o dateTime esteja no contexto após a confirmação
+				await solicitarConfirmacao(agent, context, "remarcar");
+				return;
+			}
+		} catch (error) {
+			console.error({
+				origem: "[RemarcarConsulta]",
+				mensagem: "Erro ao remarcar consulta",
+				erro: error,
+				traceId: traceId
+			});
+			agent.add(`Desculpe, tive um problema ao tentar remarcar sua consulta: ${error.message}. Inicie o processo novamente.`);
 			return;
 		}
 	}
