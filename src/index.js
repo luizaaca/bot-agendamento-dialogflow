@@ -18,7 +18,7 @@ function cpfValido(agent, nomeCompleto, cpf, origem) {
 	return true;
 }
 
-async function dialogflowWebhook(req, res) {
+export async function dialogflowWebhook(req, res) {
 	const traceId = req.body.responseId;
 	const calendarService = new CalendarService(traceId);
 
@@ -36,7 +36,7 @@ async function dialogflowWebhook(req, res) {
 	function welcome(agent) {
 		console.info({
 			origem: "[Welcome]",
-			mensagem: "Dados coletados",
+			mensagem: "Processo de agendamento iniciado",
 			detalhes: agent.parameters,
 			traceId: traceId
 		});

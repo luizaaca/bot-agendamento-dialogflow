@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from "@jest/globals";
 import { DateTime } from "luxon";
-import * as index from "../src/index.js";
+import { dialogflowWebhook } from "../src/index.js";
 
 // Mock do CalendarService
 jest.mock("../src/calendarService.js", () => {
@@ -40,11 +40,19 @@ describe("dialogflowWebhook", () => {
 		const req = {
 			body: {
 				responseId: "trace-abc-123",
-				originalDetectIntentRequest: null
+				originalDetectIntentRequest: null,
+				queryResult: {
+					intent: { displayName: "Default Welcome Intent" },
+					parameters: {},
+					outputContexts: []
+				}
 			}
 		};
-		const res = {};
-		// Função não retorna nada, mas não deve lançar erro
-		await expect(index.dialogflowWebhook(req, res)).resolves.toBeUndefined();
+		const res = {
+			json: jest.fn(),
+			send: jest.fn(),
+			setHeader: jest.fn()
+		};
+		await expect(dialogflowWebhook(req, res)).resolves.toBeUndefined();
 	});
 });

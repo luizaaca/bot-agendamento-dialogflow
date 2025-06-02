@@ -1,3 +1,4 @@
 export default {
-	testMatch: ["**/tests/**/*.test.js"]
+	testMatch: ["**/tests/**/*.test.js"],
+	transform: {},
 };

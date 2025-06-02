@@ -1,18 +1,14 @@
 import { google } from "googleapis";
-import { DateTime, Settings } from "luxon";
 import { config } from "./config.js";
+import { DateTime, Settings } from "luxon";
 
-Settings.defaultLocale = config.LOCALE; // Usa o locale do config
-
-const auth = new google.auth.GoogleAuth({
-	scopes: config.GOOGLE_SCOPES,
-});
-
-const calendar = google.calendar({ version: config.GOOGLE_API_VERSION, auth });
+Settings.defaultLocale = config.LOCALE;
 
 class CalendarService {
-	constructor(traceId) {
+	constructor(traceId, { calendar = null, auth = null } = {}) {
 		this.traceId = traceId;
+		this.auth = auth || new google.auth.GoogleAuth({ scopes: config.GOOGLE_SCOPES });
+		this.calendar = calendar || google.calendar({ version: config.GOOGLE_API_VERSION, auth: this.auth });
 	}
 
 	/**
@@ -24,8 +20,8 @@ class CalendarService {
 		const limiteMinimo = agora.plus({ hours: config.INTERVALO_AGENDAMENTO });
 		const fim = agora.plus({ days: config.DIAS_LIMITE });
 
-		const authClient = await auth.getClient();
-		const res = await calendar.events.list({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.list({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			timeMin: agora.toISO(),
@@ -63,8 +59,8 @@ class CalendarService {
 		const agora = DateTime.local().setZone(config.TIMEZONE);
 		const fim = agora.plus({ days: 30 });
 
-		const authClient = await auth.getClient();
-		const res = await calendar.events.list({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.list({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			timeMin: agora.toISO(),
@@ -156,8 +152,8 @@ class CalendarService {
 		if(eventosExistentes.some(eventoExistente => inicio === eventoExistente.inicio))
 			throw new Error("Horário selecionado já está ocupado. Por favor, escolha outro horário.");
 
-		const authClient = await auth.getClient();
-		const res = await calendar.events.insert({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.insert({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			requestBody: evento,
@@ -184,8 +180,8 @@ class CalendarService {
 			throw new Error("ID do evento não fornecido");
 		}
 
-		const authClient = await auth.getClient();
-		const res = await calendar.events.get({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.get({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			eventId: eventoId
@@ -251,8 +247,8 @@ class CalendarService {
 			throw new Error("O evento não corresponde ao nome e CPF fornecidos.");
 		}
 
-		const authClient = await auth.getClient();
-		await calendar.events.delete({
+		const authClient = await this.auth.getClient();
+		await this.calendar.events.delete({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			eventId: eventoId,
@@ -281,8 +277,8 @@ class CalendarService {
      * @returns {Promise<Array>} Lista de eventos encontrados
      */
 	async getEventosByDateTime(inicio, fim) {
-		const authClient = await auth.getClient();
-		const res = await calendar.events.list({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.list({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			timeMin: inicio.toISO(),
@@ -329,8 +325,8 @@ class CalendarService {
 			throw new Error("Horário selecionado já está ocupado. Por favor, escolha outro horário.");
 		}
 
-		const authClient = await auth.getClient();
-		const res = await calendar.events.update({
+		const authClient = await this.auth.getClient();
+		const res = await this.calendar.events.update({
 			auth: authClient,
 			calendarId: config.CALENDAR_ID,
 			eventId: eventoId,
