@@ -1,4 +1,12 @@
 steps:
+  - name: node:22
+    entrypoint: npm
+    args: ["install"]
+
+  - name: node:22
+    entrypoint: npm
+    args: ["test"]
+
   - name: gcr.io/k8s-skaffold/pack
     env:
       - GOOGLE_FUNCTION_TARGET=$_FUNCTION_TARGET
@@ -12,12 +20,14 @@ steps:
       - '--env=GOOGLE_FUNCTION_TARGET'
     id: Buildpack
     entrypoint: pack
+
   - name: gcr.io/cloud-builders/docker
     args:
       - push
       - >-
         $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
     id: Push
+
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     args:
       - run
@@ -33,6 +43,7 @@ steps:
       - '--quiet'
     id: Deploy
     entrypoint: gcloud
+
 images:
   - >-
     $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
