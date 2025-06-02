@@ -3,8 +3,8 @@ import { DateTime } from "luxon";
 import CalendarService from "../src/calendarService.js";
 
 const mockEvent = {
-	start: { dateTime: DateTime.now().toISO() },
-	end: { dateTime: DateTime.now().plus({ minutes: 60 }).toISO() },
+	start: { dateTime: DateTime.now().toISO({ zone: "America/Sao_Paulo" }) },
+	end: { dateTime: DateTime.now().plus({ minutes: 60 }).toISO({ zone: "America/Sao_Paulo" }) },
 	summary: "Consulta com Nome Teste - CPF: 12345678900",
 	description: "CPF: 12345678900",
 	id: "evento123",
