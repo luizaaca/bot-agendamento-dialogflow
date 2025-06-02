@@ -1,3 +1,4 @@
+import "dotenv/config";
 import functions from "@google-cloud/functions-framework";
 import { WebhookClient, Suggestion } from "dialogflow-fulfillment";
 import CalendarService from "./calendarService.js";

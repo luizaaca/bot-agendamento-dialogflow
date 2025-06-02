@@ -2,13 +2,13 @@ import { google } from "googleapis";
 import { DateTime, Settings } from "luxon";
 import { config } from "./config.js";
 
-Settings.defaultLocale = "pt-BR"; // Define o locale padrão para todas as instâncias Luxon
+Settings.defaultLocale = config.LOCALE; // Usa o locale do config
 
 const auth = new google.auth.GoogleAuth({
-	scopes: ["https://www.googleapis.com/auth/calendar"],
+	scopes: config.GOOGLE_SCOPES,
 });
 
-const calendar = google.calendar({ version: "v3", auth });
+const calendar = google.calendar({ version: config.GOOGLE_API_VERSION, auth });
 
 class CalendarService {
 	constructor(traceId) {
@@ -20,7 +20,7 @@ class CalendarService {
      * @returns {Promise<Array<string>>} Lista de horários disponíveis formatados.
      */
 	async obterHorariosDisponiveis() {
-		const agora = DateTime.local().setZone("America/Sao_Paulo");
+		const agora = DateTime.local().setZone(config.TIMEZONE);
 		const limiteMinimo = agora.plus({ hours: config.INTERVALO_AGENDAMENTO });
 		const fim = agora.plus({ days: config.DIAS_LIMITE });
 
@@ -60,7 +60,7 @@ class CalendarService {
      * @returns {Promise<Array<Object>>} Lista de eventos encontrados.
      */
 	async verificarAgendamentoExistente(nome, cpf) {
-		const agora = DateTime.local().setZone("America/Sao_Paulo");
+		const agora = DateTime.local().setZone(config.TIMEZONE);
 		const fim = agora.plus({ days: 30 });
 
 		const authClient = await auth.getClient();
@@ -78,8 +78,8 @@ class CalendarService {
 			const descricao = (evento.description || "") + (evento.summary || "");
 			return descricao.includes(nome) && descricao.includes(cpf);
 		}).map(evento => ({
-			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
-			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
+			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: config.TIMEZONE }),
+			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: config.TIMEZONE }),
 			summary: evento.summary,
 			description: evento.description,
 			id: evento.id,
@@ -144,11 +144,11 @@ class CalendarService {
 			description: `CPF: ${cpf}`,
 			start: {
 				dateTime: inicio.toISO(),
-				timeZone: "America/Sao_Paulo",
+				timeZone: config.TIMEZONE,
 			},
 			end: {
 				dateTime: fim.toISO(),
-				timeZone: "America/Sao_Paulo",
+				timeZone: config.TIMEZONE,
 			},
 		};
 
@@ -213,8 +213,8 @@ class CalendarService {
 		}
 
 		return {
-			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
-			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
+			inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: config.TIMEZONE }),
+			fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: config.TIMEZONE }),
 			summary: evento.summary,
 			description: evento.description,
 			id: evento.id,
@@ -293,8 +293,8 @@ class CalendarService {
 		const eventos = (res.data.items || [])
 			.filter(evento => evento.status !== "cancelled")
 			.map(evento => ({
-				inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: "America/Sao_Paulo" }),
-				fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: "America/Sao_Paulo" }),
+				inicio: DateTime.fromISO(evento.start.dateTime || evento.start.date, { zone: config.TIMEZONE }),
+				fim: DateTime.fromISO(evento.end.dateTime || evento.end.date, { zone: config.TIMEZONE }),
 				summary: evento.summary,
 				description: evento.description,
 				id: evento.id,
@@ -339,11 +339,11 @@ class CalendarService {
 				description: eventoExistente.description,
 				start: {
 					dateTime: inicio.toISO(),
-					timeZone: "America/Sao_Paulo",
+					timeZone: config.TIMEZONE,
 				},
 				end: {
 					dateTime: fim.toISO(),
-					timeZone: "America/Sao_Paulo",
+					timeZone: config.TIMEZONE,
 				},
 			},
 		});
