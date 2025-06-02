@@ -45,8 +45,8 @@ describe("CalendarService", () => {
 	it("deve buscar um evento pelo id", async () => {
 		const service = new CalendarService("test", { calendar: mockCalendar, auth: mockAuth });
 		const evento = await service.getEventoById("evento123");
-		expect(evento.inicio.toISO()).toBe(mockEvent.start.dateTime);
-		expect(evento.fim.toISO()).toBe(mockEvent.end.dateTime);
+		expect(evento.inicio.toMillis()).toBe(DateTime.fromISO(mockEvent.start.dateTime).toMillis());
+		expect(evento.fim.toMillis()).toBe(DateTime.fromISO(mockEvent.end.dateTime).toMillis());
 		expect(evento.summary).toBe(mockEvent.summary);
 		expect(evento.description).toBe(mockEvent.description);
 		expect(evento.id).toBe(mockEvent.id);
