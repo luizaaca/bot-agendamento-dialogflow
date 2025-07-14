@@ -6,7 +6,7 @@ Este é um chatbot para agendamento e gerenciamento de consultas médicas, const
 
 **✨ Experimente o Chatbot Agora! ✨**
 
-[![Experimente o Chatbot](https://img.shields.io/badge/Acessar_Chatbot-28A745?style=for-the-badge&logo=github&logoColor=white)](https://chat-bot-ng-197322431493.southamerica-east1.run.app/)
+[![Experimente o Chatbot](https://img.shields.io/badge/Acessar_Chatbot-28A745?style=for-the-badge&logo=github&logoColor=white)](https://chatbot-ng-197322431493.southamerica-east1.run.app/)
 
 ---
 
